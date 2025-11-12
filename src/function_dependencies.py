@@ -3,19 +3,20 @@ from rpy2.robjects.packages import importr
 
 codetools = importr('codetools')
 tools = importr('tools')
-r('library(tidyverse)')
+r('library(dplyr)')
 
 def function_dependencies(func_names):
     deps_pkgs = set()
     for func in func_names:
         try:
-            # Find the package it lives in
+            #find the package it lives in
             pkg = r(f'find("{func}")')[0].replace("package:", "")
             deps_pkgs.add(pkg)
 
-            # Inspect what globals it calls
-            globals_ = codetools.findGlobals(r(func))
+            #inspect what globals it calls
+            globals_ = codetools.findGlobals(r(func)) #R function to find global variables used by a function
             for sym in globals_:
+                print(sym)
                 try:
                     owner = r(f'find("{sym}")')[0].replace("package:", "")
                     deps_pkgs.add(owner)
@@ -25,7 +26,7 @@ def function_dependencies(func_names):
             print(f"Skipping {func}: {e}")
     return deps_pkgs
 
-# Example: only using filter() and geom_point()
+# Example: only using filter() from dplyr
 needed = function_dependencies(["filter"])
 
 # Expand to recursive package dependencies

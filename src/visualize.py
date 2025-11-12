@@ -54,7 +54,7 @@ def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max
     nt = Network(height="100vh", width="100%", directed=True, bgcolor="#dddddd")
 
     nt.toggle_physics(True)
-    nt.force_atlas_2based(
+    nt.force_atlas_2based( #circle layout
         gravity=-50,
         central_gravity=0.01,
         spring_length=100,
@@ -62,7 +62,7 @@ def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max
         damping=0.8,
         overlap=0.5,
     )
-    nt.barnes_hut(gravity=-10000, central_gravity=0.01, spring_length=100, spring_strength=0.1, damping=0.8)
+    nt.barnes_hut(gravity=-10000, central_gravity=0.01, spring_length=100, spring_strength=0.1, damping=0.8) #settings for the physics engine
 
     #color the graph dependencies layer by layer
     def layer_color(layer):

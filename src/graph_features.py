@@ -3,10 +3,6 @@ from datetime import datetime
 import os
 
 def add_features(filename, title="", max_depth=5):
-    """
-    Add overlay features (title + timestamp + interact tip) to the saved PyVis HTML graph.
-    """
-
     with open(filename, "r", encoding="utf-8") as f:
         html_content = f.read()
 
@@ -64,9 +60,6 @@ def add_features(filename, title="", max_depth=5):
         f.write(str(soup))
 
     def add_layer_slider(html_path, js_path="src/static/graph_interact.js", max_depth=5):
-        """
-        Inject the layer slider JS reference and global depth variable into the HTML.
-        """
         #find path for layer_slider.js relative to html_path
         rel_path = os.path.relpath(js_path, start=os.path.dirname(html_path))
         script_tag = (
@@ -129,4 +122,3 @@ def add_features(filename, title="", max_depth=5):
     add_layer_slider(filename, "src/static/graph_interact.js", max_depth)
     add_hint(filename)
     add_info_panel(filename)
-

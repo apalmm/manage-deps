@@ -1,3 +1,51 @@
+// //load and display package functions
+// async function loadPackageFunctions() {
+//   //needs to be async to await fetch
+//   try {
+//     const resp = await fetch("data/package_functions.json");
+//     return await resp.json();
+//   } catch (e) {
+//     //sanity check
+//     console.error("Failed to load function data:", e);
+//     return {};
+//   }
+// }
+
+// async function init() {
+//   const pkgFuncs = await loadPackageFunctions();
+//   console.log(pkgFuncs);
+// }
+
+// init();
+
+// network.on("selectNode", function (params) {
+//   if (params.nodes.length === 0) return;
+//   const nodeId = params.nodes[0];
+//   const node = network.body.data.nodes.get(nodeId);
+//   const pkg = node.label;
+
+//   // const panel = document.getElementById("info-panel");
+//   const nameEl = document.getElementById("package-name");
+//   const listEl = document.getElementById("function-list");
+
+//   nameEl.textContent = pkg;
+//   listEl.innerHTML = "";
+
+//   const funcs = packageData[pkg] || [];
+//   if (funcs.length === 0) {
+//     listEl.innerHTML =
+//       "<li style='color:#999;'>No functions found or not available.</li>";
+//   } else {
+//     funcs.forEach((fn) => {
+//       const li = document.createElement("li");
+//       li.textContent = fn;
+//       li.style.borderBottom = "1px solid #ddd";
+//       li.style.padding = "2px 0";
+//       listEl.appendChild(li);
+//     });
+//   }
+// });
+
 window.addEventListener("load", function () {
   //once our window mounts, we can try to get the network object from pyvis
   const network = window.network || window.networkBody?.network;
@@ -77,47 +125,4 @@ window.addEventListener("load", function () {
     const url = `https://cran.r-project.org/package=${encodeURIComponent(pkg)}`;
     window.open(url, "_blank"); //append to cran url and open in new tab
   });
-});
-
-//load and display package functions
-async function loadPackageFunctions() {
-  //needs to be async to await fetch
-  try {
-    const resp = await fetch("data/package_functions.json");
-    return await resp.json();
-  } catch (e) {
-    //sanity check
-    console.error("Failed to load function data:", e);
-    return {};
-  }
-}
-
-const packageData = await loadPackageFunctions();
-
-network.on("selectNode", function (params) {
-  if (params.nodes.length === 0) return;
-  const nodeId = params.nodes[0];
-  const node = network.body.data.nodes.get(nodeId);
-  const pkg = node.label;
-
-  const panel = document.getElementById("info-panel");
-  const nameEl = document.getElementById("package-name");
-  const listEl = document.getElementById("function-list");
-
-  nameEl.textContent = pkg;
-  listEl.innerHTML = "";
-
-  const funcs = packageData[pkg] || [];
-  if (funcs.length === 0) {
-    listEl.innerHTML =
-      "<li style='color:#999;'>No functions found or not available.</li>";
-  } else {
-    funcs.forEach((fn) => {
-      const li = document.createElement("li");
-      li.textContent = fn;
-      li.style.borderBottom = "1px solid #ddd";
-      li.style.padding = "2px 0";
-      listEl.appendChild(li);
-    });
-  }
 });
