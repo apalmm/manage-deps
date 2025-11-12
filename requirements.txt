@@ -1,0 +1,7 @@
+requests
+pandas
+networkx
+pyvis
+matplotlib
+tqdm
+beautifulsoup4
