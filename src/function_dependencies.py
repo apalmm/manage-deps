@@ -3,7 +3,7 @@ from rpy2.robjects.packages import importr
 
 codetools = importr('codetools')
 tools = importr('tools')
-r('library(dplyr)')
+r('library(tidyverse)')
 
 def function_dependencies(func_names):
     deps_pkgs = set()
@@ -24,6 +24,7 @@ def function_dependencies(func_names):
                     pass
         except Exception as e:
             print(f"Skipping {func}: {e}")
+
     return deps_pkgs
 
 # Example: only using filter() from dplyr

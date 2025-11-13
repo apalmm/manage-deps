@@ -1,5 +1,28 @@
 let packageData = {}; // make it global so the event handler can access it
 
+function renderList(filteredFuncs, listEl) {
+  filteredFuncs.forEach((fn) => {
+    const li = document.createElement("li");
+    li.textContent = fn;
+    li.style.borderBottom = "1px solid #ddd";
+    li.style.padding = "2px 0";
+    li.style.cursor = "pointer";
+
+    //highlight on click
+    li.addEventListener("click", () => {
+      listEl.querySelectorAll("li").forEach((el) => {
+        //reset styles when not clicked
+        el.style.backgroundColor = "";
+        li.style.fontWeight = "None";
+      });
+      li.style.backgroundColor = "#e0e0e0";
+      li.style.fontWeight = "bold";
+    });
+
+    listEl.appendChild(li);
+  });
+}
+
 async function loadPackageFunctions() {
   try {
     const resp = await fetch("/data/package_functions.json");
@@ -14,7 +37,6 @@ async function loadPackageFunctions() {
 async function init(network) {
   // Load package-function data
   packageData = await loadPackageFunctions();
-  console.log("Loaded package data:", packageData);
 
   // Only attach the event listener *after* data is ready
   network.on("selectNode", function (params) {
@@ -26,6 +48,7 @@ async function init(network) {
 
     const nameEl = document.getElementById("package-name");
     const listEl = document.getElementById("function-list");
+    const searchEl = document.getElementById("function-search");
 
     nameEl.textContent = pkg;
     listEl.innerHTML = "";
@@ -35,15 +58,18 @@ async function init(network) {
       listEl.innerHTML =
         //current issue I think loading window before data is ready
         "<li style='color:#999;'>No functions found or not available.</li>";
-    } else {
-      funcs.forEach((fn) => {
-        const li = document.createElement("li");
-        li.textContent = fn;
-        li.style.borderBottom = "1px solid #ddd";
-        li.style.padding = "2px 0";
-        listEl.appendChild(li);
-      });
     }
+
+    console.log(listEl);
+    //inital list render
+    renderList(funcs, listEl);
+
+    //filter as user types
+    searchEl.addEventListener("input", () => {
+      const q = searchEl.value.toLowerCase();
+      const filtered = funcs.filter((f) => f.toLowerCase().includes(q));
+      renderList(filtered);
+    });
   });
 }
 

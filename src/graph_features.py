@@ -99,21 +99,30 @@ def add_features(filename, title="", max_depth=5):
         package_info_panel = """
             <div id="info-panel" style="
                 position: absolute;
-                top: 0;
-                right: 0;
-                width: 25%;
-                height: 75%;
+                top: 10%;
+                right: 50px;
+                width: 20%;
+                height: 50%;
                 background: #f9f9f9;
                 border-left: 2px solid #ccc;
                 overflow-y: auto;
-                padding: 12px;
                 font-family: Arial, sans-serif;
                 box-shadow: -3px 0 8px rgba(0,0,0,0.1);
                 z-index: 9998;
+                border-radius: 8px;
+                padding: 12px 12px 12px 12px;
             ">
-            <h2 style="margin-top:0;">Package Info</h2>
-            <p id="package-name" style="font-weight:bold;"></p>
-            <ul id="function-list" style="list-style-type:none; padding-left:0;"></ul>
+                <div id="info-header" align-self: center; style="position: sticky; top: 0; background: white; z-index: 2; padding-bottom: 6px">
+                    <h2 style="margin-top:0;">Package Info</h2>
+                        <input
+                            type="text"
+                            id="function-search"
+                            placeholder="Search functions..."
+                            style="width: 95%; padding: 4px; margin-bottom: 8px;"
+                        />
+                </div>
+                <p id="package-name" style="font-weight:bold;">Select a node to see it's function list</p>
+                <ul scrollbar-width: none; -ms-overflow-style: none; id="function-list" style="list-style-type:none; padding-left:0;"></ul>
             </div>
         """
         with open(filename, "a", encoding="utf-8") as f:

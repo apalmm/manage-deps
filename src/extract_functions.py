@@ -5,7 +5,6 @@ def export_package_functions(packages, out_path="data/package_functions.json"):
     #store functions for package in json file
     result = {}
     r = robjects.r
-
     for pkg in packages:
         try:
             #check if package is installed in the program

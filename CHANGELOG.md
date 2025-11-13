@@ -76,3 +76,11 @@ _(Dependency Visualization and Analysis Toolkit)_
 - Added "tip" for interacting with a node, may update this to be calling CreatePackageReport(pkg) instead of the CRAN url.
 
 ---
+
+### **v1.0 — Added search bar and function lookup for each node**
+
+- Initalized versioning with github repo
+- Make sure to start python server to avoid CORS issues and navigate to root directory
+- command is `python3 -m http.server 8000`
+
+---
