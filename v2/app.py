@@ -25,24 +25,22 @@ def analyze():
     data = request.get_json()
     func = data.get("function")
 
-    from rpy2.robjects import conversion, default_converter
-    with conversion.localconverter(default_converter):
-        codetools = importr("codetools")
-        tools = importr("tools")
+    codetools = importr("codetools")
+    tools = importr("tools")
 
-        deps = set()
-        try:
-            pkg = robjects.r(f'find("{func}")')[0].replace("package:", "")
-            deps.add(pkg)
-            globals_ = codetools.findGlobals(robjects.r(func))
-            for sym in globals_:
-                try:
-                    owner = robjects.r(f'find("{sym}")')[0].replace("package:", "")
-                    deps.add(owner)
-                except Exception:
-                    pass
-        except Exception as e:
-            return jsonify({"error": str(e)})
+    deps = set()
+    try:
+        pkg = robjects.r(f'find("{func}")')[0].replace("package:", "")
+        deps.add(pkg)
+        globals_ = codetools.findGlobals(robjects.r(func))
+        for sym in globals_:
+            try:
+                owner = robjects.r(f'find("{sym}")')[0].replace("package:", "")
+                deps.add(owner)
+            except Exception:
+                pass
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
     full = tools.package_dependencies(list(deps), recursive=True)
     return jsonify({"required_packages": list(deps), "tree": str(full)})
