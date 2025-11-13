@@ -1,0 +1,10 @@
+requests
+pandas
+networkx
+pyvis
+matplotlib
+tqdm
+beautifulsoup4
+flask 
+flask-cors 
+rpy2

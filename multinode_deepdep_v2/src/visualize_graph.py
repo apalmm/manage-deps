@@ -1,17 +1,9 @@
-"""
-Interactive dependency visualization using PyVis.
-Deepdep-style graph philosophy:
-- one node per package
-- one edge per dependency
-- hierarchical radial layout
-"""
-
 import os
 import networkx as nx
 from pyvis.network import Network
-from .graph_options import remove_same_level, remove_reverse_edges, compute_node_metrics
+from .options import remove_same_level, remove_reverse_edges, compute_node_metrics
 from .graph_features import add_features
-from function_dependencies import function_dependencies
+from .function_dependencies import function_dependencies
 
 def assign_layers(G, roots):
     """
