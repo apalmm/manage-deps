@@ -1,4 +1,5 @@
 from flask import Flask, render_template, send_from_directory, request, jsonify
+from .function_dependencies import function_dependencies
 
 def create_app():
     app = Flask(__name__)
@@ -19,12 +20,17 @@ def create_app():
 
     #API endpoint for dependency analysis
     @app.route("/analyze", methods=["POST"])
-    def analyze():
+    def analyze_function_dependencies():
         data = request.get_json()
         func = data.get("function")
-        # deps = function_deps(func)
+        pkgs = request.url_rule.rule.split("/")[-1]
 
-        return jsonify({"required_packages": list(func)})
+        print(pkgs)
+        deps = function_dependencies(func, ["tidyr", "stringr", "stringi", "cli", "stats", "tools"])
+        deps = [x for x in deps if isinstance(x, str)]
+        
+        print(deps)
+        return jsonify({"required_packages": list(deps)})
     
     return app
 

@@ -19,7 +19,8 @@ def main():
                         help="where to store generated html files")
 
     args = parser.parse_args()
-
+    
+    args.packages
     #build dependency graph
     if len(args.packages) == 1:
         G = build_graph(args.packages[0], depth=args.depth)
@@ -35,7 +36,7 @@ def main():
 
     #give each file a unique name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{'_'.join(args.packages)}_depth{args.depth}_{timestamp}.html"
+    filename = f"{'_'.join(args.packages)}##depth{args.depth}_{timestamp}.html"
     output_file = os.path.join(output_dir, filename)
 
     #render the graph and export package metadata
