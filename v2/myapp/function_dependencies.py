@@ -1,12 +1,11 @@
 from rpy2.robjects import r
-from rpy2.robjects.packages import importr
+from flask import session
 
-codetools = importr('codetools')
-tools = importr('tools')
-r('library(tidyverse)')
+tools = session.get("tools")
 
 def function_dependencies(func):
     deps_pkgs = set()
+    codetools = session.get("codetools")
     try:
         #find the package it lives in
         pkg = r(f'find("{func}")')[0].replace("package:", "")
@@ -23,7 +22,9 @@ def function_dependencies(func):
                 pass
     except Exception as e:
         print(f"Skipping {func}: {e}")
-
+    
+    print(deps_pkgs)
+    
     return deps_pkgs
 
 # Example: only using filter() from dplyr

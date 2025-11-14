@@ -1,9 +1,8 @@
 import os
 import networkx as nx
 from pyvis.network import Network
-from .options import remove_same_level, remove_reverse_edges, compute_node_metrics
+from .options import remove_reverse_edges, compute_node_metrics
 from .graph_features import add_features
-from .function_dependencies import function_dependencies
 
 def assign_layers(G, roots):
     """

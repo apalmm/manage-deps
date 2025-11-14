@@ -39,6 +39,7 @@ function renderList(filteredFuncs, listEl) {
         const data = await resp.json();
 
         if (data.required_packages && data.required_packages.length > 0) {
+          console.log(data.required_packages);
           depContent.innerHTML = `
             <strong>${fn}</strong> depends on:<br>
             <ul style="margin-top:4px; padding-left:18px;">
