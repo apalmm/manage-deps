@@ -64,6 +64,7 @@ def add_features(filename, title="", max_depth=5):
     add_layer_slider(filename, "static/js/graph_interact.js", max_depth)
     add_hint(filename)
     add_info_panel(filename)
+    # add_dep_panel(filename)
 
 
 def add_layer_slider(html_path, js_path="static/js/graph_interact.js", max_depth=5):
@@ -78,6 +79,42 @@ def add_layer_slider(html_path, js_path="static/js/graph_interact.js", max_depth
 
     with open(html_path, "a", encoding="utf-8") as f:
         f.write(script_tag)
+
+
+def add_dep_panel(filename):
+    dep_panel_html = """
+      <div id="dep-panel" style="
+          position:absolute;
+          top:70%;
+          right:50px;
+          width:20%;
+          height:18%;
+          background:#fefefe;
+          border-left:2px solid #ccc;
+          border-top:1px solid #ccc;
+          overflow-y:auto;
+          font-family:Arial,sans-serif;
+          box-shadow:-3px 0 8px rgba(0,0,0,0.15);
+          border-radius:8px;
+          padding:10px;
+          display:none;
+          z-index:999999;
+          pointer-events:auto;
+      ">
+        <div style="position:sticky;top:0;background:#fff;padding-bottom:4px;">
+          <h3 style="margin-top:0;">Direct Package Dependencies</h3>
+          <button id="close-dep" style="
+            float:right;
+            background:none;
+            border:none;
+            cursor:pointer;
+            font-size:14px;">✕</button>
+        </div>
+        <div id="dep-content" style="font-size:13px;color:#333;"></div>
+      </div>
+    """
+    with open(filename, "a", encoding="utf-8") as f:
+        f.write(dep_panel_html)
 
 
 def add_hint(filename):

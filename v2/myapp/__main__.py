@@ -20,7 +20,7 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     # build dependency graph
     if len(args.packages) == 1:
         G = build_graph(args.packages[0])

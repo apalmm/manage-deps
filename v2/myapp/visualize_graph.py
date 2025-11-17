@@ -4,6 +4,7 @@ from pyvis.network import Network
 from .options import remove_reverse_edges, compute_node_metrics
 from .graph_features import add_features
 
+
 def assign_layers(G, roots):
     """
     Assign 'layer' attribute to each node based on distance from nearest root.
@@ -23,22 +24,29 @@ def assign_layers(G, roots):
     return G
 
 
-def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max_depth=4, same_level=False, graph_title=None):
+def visualize_graph(
+    G,
+    filename="data/graphs/dependencies.html",
+    roots=None,
+    max_depth=4,
+    same_level=False,
+    graph_title=None,
+):
     """
     Visualize the dependency graph using PyVis and save to an HTML file.
     """
 
-    #ensure output directory exists
+    # ensure output directory exists
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
-    #assign layers to each node
+    # assign layers to each node
     if roots is None:
         roots = [n for n in G.nodes if G.in_degree(n) == 0]
 
     assign_layers(G, roots)
 
-    #if not same_level:
-    #TODO add cmdline option to control these features
+    # if not same_level:
+    # TODO add cmdline option to control these features
     # G = remove_same_level(G)
     G = remove_reverse_edges(G)
     G = compute_node_metrics(G)
@@ -46,7 +54,7 @@ def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max
     nt = Network(height="100vh", width="100%", directed=True, bgcolor="#dddddd")
 
     nt.toggle_physics(True)
-    nt.force_atlas_2based( #circle layout
+    nt.force_atlas_2based(  # circle layout
         gravity=-50,
         central_gravity=0.01,
         spring_length=100,
@@ -54,9 +62,15 @@ def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max
         damping=0.8,
         overlap=0.5,
     )
-    nt.barnes_hut(gravity=-10000, central_gravity=0.01, spring_length=100, spring_strength=0.1, damping=0.8) #settings for the physics engine
+    nt.barnes_hut(
+        gravity=-10000,
+        central_gravity=0.01,
+        spring_length=100,
+        spring_strength=0.1,
+        damping=0.8,
+    )  # settings for the physics engine
 
-    #color the graph dependencies layer by layer
+    # color the graph dependencies layer by layer
     def layer_color(layer):
         palette = ["#5fc8f4", "#a1ce40", "#fde74c", "#ff8330", "#e55934", "#7b5e7b"]
         return palette[layer % len(palette)]
@@ -67,9 +81,9 @@ def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max
         indeg = data.get("in_degree", 0)
         importance = data.get("importance", 0)
 
-        size = 15 + 30 * importance #base size + scaled by importance
+        size = 15 + 30 * importance  # base size + scaled by importance
         if layer == 0:
-            #base node
+            # base node
             size = 45
 
         # base_color = "#5fc8f4"  # light blue
@@ -95,17 +109,22 @@ def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max
             title=title,
             color=color,
             size=size,
-            font={"size": 22, "color": "black", "strokeWidth": 15, "strokeColor": "white"},
+            font={
+                "size": 22,
+                "color": "black",
+                "strokeWidth": 15,
+                "strokeColor": "white",
+            },
             borderWidth=border_width,
         )
 
-    #add edges with dependency type
+    # add edges with dependency type
     for u, v, data in G.edges(data=True):
         dep_type = data.get("type", "")
         color = {
-            "Imports": "#333333",
+            "Imports": "#999",
             "LinkingTo": "#ff5b02",
-        }.get(dep_type, "#999999")
+        }.get(dep_type, "#ccc")
 
         # same_level = u.color == v.color
         u_layer = G.nodes[u].get("layer", 0)
@@ -113,11 +132,13 @@ def visualize_graph(G, filename="data/graphs/dependencies.html", roots=None, max
         same_level = u_layer == v_layer
 
         if dep_type == "LinkingTo":
-            nt.add_edge(u, v, color=color, dashes=True, title=dep_type, same_level=same_level)
+            nt.add_edge(
+                u, v, color=color, dashes=True, title=dep_type, same_level=same_level
+            )
         else:
-            nt.add_edge(u, v, color=color, title=dep_type, arrows="to", same_level=same_level)
-
+            nt.add_edge(
+                u, v, color=color, title=dep_type, arrows="to", same_level=same_level
+            )
 
     nt.save_graph(filename)
     add_features(filename, title=graph_title, max_depth=max_depth)
-
