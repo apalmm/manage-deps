@@ -23,10 +23,10 @@ def main():
     
     # build dependency graph
     if len(args.packages) == 1:
-        G = build_graph(args.packages[0], depth=args.depth)
+        G = build_graph(args.packages[0])
         graph_title = f"dependency map for {args.packages[0]}"
     else:
-        G = multi_root_graph(args.packages, depth=args.depth)
+        G = multi_root_graph(args.packages)
         pkg_list = ", ".join(args.packages)
         graph_title = f"multi-root dependency map ({pkg_list}"
 
@@ -34,11 +34,14 @@ def main():
     output_dir = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", args.output_dir)
     )
+
     os.makedirs(output_dir, exist_ok=True)
+
+    max_depth = G.graph["max_depth"]
 
     # give each file a unique name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{'_'.join(args.packages)}##depth{args.depth}_{timestamp}.html"
+    filename = f"{'_'.join(args.packages)}##depth{max_depth}_{timestamp}.html"
     output_file = os.path.join(output_dir, filename)
 
     # render the graph and export package metadata
@@ -46,7 +49,7 @@ def main():
         G,
         output_file,
         roots=args.packages,
-        max_depth=args.depth,
+        max_depth=max_depth,
         graph_title=graph_title,
     )
 

@@ -93,3 +93,11 @@ _(Dependency Visualization and Analysis Toolkit)_
 - Graphs now named based on timestamp as to avoid overwriting (might change this back)
 
 ---
+
+### **v1.0.12 — Flask Backend, Fetching Functions**
+
+- Transitioned program to flask
+- Successfully can call function analyze endpoint
+- Setting depth automatically as max depth, changing color of bolded lines when node selected
+
+---
