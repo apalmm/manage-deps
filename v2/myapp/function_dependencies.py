@@ -3,9 +3,17 @@ import rpy2.robjects as ro
 from rpy2.robjects.conversion import localconverter, converter_ctx
 from rpy2.robjects import default_converter, pandas2ri
 
+
 def convert_r_to_python(obj):
-    if isinstance(obj, (ro.vectors.IntVector, ro.vectors.FloatVector, 
-                        ro.vectors.StrVector, ro.vectors.BoolVector)):
+    if isinstance(
+        obj,
+        (
+            ro.vectors.IntVector,
+            ro.vectors.FloatVector,
+            ro.vectors.StrVector,
+            ro.vectors.BoolVector,
+        ),
+    ):
         return list(obj)
 
     elif isinstance(obj, ro.vectors.DataFrame):
@@ -13,8 +21,7 @@ def convert_r_to_python(obj):
             return {col: list(obj.rx2(col)) for col in obj.colnames}
 
     elif isinstance(obj, ro.vectors.ListVector):
-        return {name: convert_r_to_python(value) 
-                for name, value in zip(obj.names, obj)}
+        return {name: convert_r_to_python(value) for name, value in zip(obj.names, obj)}
 
     elif isinstance(obj, ro.vectors.Matrix):
         return [list(row) for row in obj]

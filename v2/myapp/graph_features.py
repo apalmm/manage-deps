@@ -1,15 +1,15 @@
 from bs4 import BeautifulSoup
 from datetime import datetime
-import os
+
 
 def add_features(filename, title="", max_depth=5):
-    #read html content
+    # read html content
     with open(filename, "r", encoding="utf-8") as f:
         html_content = f.read()
 
     soup = BeautifulSoup(html_content, "lxml")
 
-    #add title overlay
+    # add title overlay
     graph_title = soup.new_tag("div")
     graph_title.string = title
     graph_title["style"] = (
@@ -28,7 +28,7 @@ def add_features(filename, title="", max_depth=5):
         "border-bottom:1px solid #ccc;"
     )
 
-    #add timestamp overlay
+    # add timestamp overlay
     timestamp_div = soup.new_tag("div")
     timestamp_text = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     timestamp_div.string = timestamp_text
@@ -46,7 +46,7 @@ def add_features(filename, title="", max_depth=5):
         "border:1px solid #ddd;"
     )
 
-    #insert overlays
+    # insert overlays
     body_tag = soup.body
     if body_tag is not None:
         first_div = body_tag.find("div")
@@ -56,23 +56,23 @@ def add_features(filename, title="", max_depth=5):
             body_tag.insert(0, graph_title)
         body_tag.append(timestamp_div)
 
-    #write updated html back
+    # write updated html back
     with open(filename, "w", encoding="utf-8") as f:
         f.write(str(soup))
 
-    #add layer slider + js hook
+    # add layer slider + js hook
     add_layer_slider(filename, "static/js/graph_interact.js", max_depth)
     add_hint(filename)
     add_info_panel(filename)
 
 
 def add_layer_slider(html_path, js_path="static/js/graph_interact.js", max_depth=5):
-    #path is static now so flask can serve it
+    # path is static now so flask can serve it
     script_tag = (
         f'\n<script type="text/javascript">'
-        f'const MAX_LAYER_DEPTH={max_depth};'
-        f'const ENABLE_SAME_LEVEL_TOGGLE=true;'
-        f'</script>\n'
+        f"const MAX_LAYER_DEPTH={max_depth};"
+        f"const ENABLE_SAME_LEVEL_TOGGLE=true;"
+        f"</script>\n"
         f'<script type="text/javascript" src="/{js_path}"></script>\n'
     )
 
