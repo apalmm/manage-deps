@@ -19,7 +19,9 @@ def function_dependencies(func, pkgs=None, depth=3):
         if isinstance(pkgs, str):
             pkgs_r = f'"{pkgs}"'
         else:
-            pkgs_r = "c(" + ",".join([f'"{p}"' for p in pkgs]) + ")"
+            pkgs_r = (
+                "c(" + ",".join([f'"{p}"' for p in pkgs]) + ")"
+            )  # list version (not implemented yet)
     else:
         pkgs_r = "character()"
 

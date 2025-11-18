@@ -159,8 +159,8 @@ def add_info_panel(filename):
             border-radius:8px;
             padding: 0 12px 12px 12px;
         ">
-            <div id="info-header" style="position:sticky;top:0;background:white;z-index:2;padding-bottom:12px;">
-                <h2 style="margin-top: 12px;">package info</h2>
+            <div id="info-header" style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding-bottom:12px;">
+                <h2 style="margin-top: 12px;">Package Info</h2>
                 <input
                     type="text"
                     id="function-search"

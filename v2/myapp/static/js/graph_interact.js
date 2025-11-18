@@ -98,49 +98,46 @@ async function init(network) {
     const node = network.body.data.nodes.get(nodeId);
     const pkg = node.label;
 
+    // Get all edges and nodes
     const allEdges = network.body.data.edges.get();
+    const allNodes = network.body.data.nodes.get();
 
-    //reset edge colors
-    allEdges.forEach((e) => {
-      e.color = { color: e.type === "LinkingTo" ? "#ff5b02" : "#999" };
-      e.width = 1;
-    });
-
-    //highlight outgoing edges
+    // Identify outgoing edges and their target node IDs
     const outgoingEdges = allEdges.filter((e) => e.from === nodeId);
-    outgoingEdges.forEach((e) => {
-      e.color = { color: "red" };
-      e.width = 3;
-    });
-    network.body.data.edges.update(allEdges);
+    const connectedNodeIds = new Set([
+      nodeId,
+      ...outgoingEdges.map((e) => e.to),
+    ]);
 
-    // //populate direct dependency panel
-    // const depPanel = document.getElementById("dep-panel");
-    // const depContent = document.getElementById("dep-content");
+    // Reset all edges to base color and width
+    const resetEdges = allEdges.map((e) => ({
+      id: e.id,
+      color: { color: e.type === "LinkingTo" ? "#ff5b02" : "#999" },
+      width: 1,
+      opacity: 0.2, // fade everything initially
+    }));
 
-    const directDeps = outgoingEdges
-      .map((e) => {
-        const target = network.body.data.nodes.get(e.to);
-        return target ? target.label : null;
-      })
-      .filter(Boolean);
+    // Highlight outgoing edges
+    const highlightedEdges = outgoingEdges.map((e) => ({
+      id: e.id,
+      color: "red",
+      width: 3,
+      opacity: 1.0,
+    }));
 
-    // if (depPanel && depContent) {
-    //   console.log("hello");
-    //   depPanel.style.display = "block";
-    //   if (directDeps.length > 0) {
-    //     depContent.innerHTML = `
-    //       <strong>${pkg}</strong> directly depends on:<br>
-    //       <ul style="margin-top:4px; padding-left:18px">
-    //         ${directDeps.map((p) => `<li>${p}</li>`).join("")}
-    //       </ul>
-    //     `;
-    //   } else {
-    //     depContent.textContent = `${pkg} has no direct dependencies.`;
-    //   }
-    // }
+    // Dim unrelated edges
+    network.body.data.edges.update(resetEdges);
+    network.body.data.edges.update(highlightedEdges);
 
-    //populate function panel
+    // Fade all nodes except the selected + connected ones
+    const updatedNodes = allNodes.map((n) => ({
+      id: n.id,
+      opacity: connectedNodeIds.has(n.id) ? 1.0 : 0.2,
+      borderWidth: 3,
+    }));
+    network.body.data.nodes.update(updatedNodes);
+
+    // Update side panels and function list
     const nameEl = document.getElementById("package-name");
     const listEl = document.getElementById("function-list");
     const searchEl = document.getElementById("function-search");
@@ -162,10 +159,26 @@ async function init(network) {
     };
   });
 
-  //hide dependency panel on deselect
   network.on("deselectNode", () => {
-    const depPanel = document.getElementById("dep-panel");
-    if (depPanel) depPanel.style.display = "none";
+    // Reset edges and nodes to normal appearance
+    const edges = network.body.data.edges.get();
+    const nodes = network.body.data.nodes.get();
+
+    const resetEdges = edges.map((e) => ({
+      id: e.id,
+      color: { color: e.type === "LinkingTo" ? "#ff5b02" : "#999" },
+      width: 1,
+      opacity: 1.0,
+    }));
+
+    const resetNodes = nodes.map((n) => ({
+      id: n.id,
+      opacity: 1.0,
+      borderWidth: 1,
+    }));
+
+    network.body.data.edges.update(resetEdges);
+    network.body.data.nodes.update(resetNodes);
   });
 }
 
@@ -227,6 +240,38 @@ window.addEventListener("load", () => {
     });
     network.body.data.edges.update(edges);
   });
+
+  // Legend panel
+  const legend = document.createElement("div");
+  legend.id = "graph-legend";
+  legend.style.position = "absolute";
+  legend.style.bottom = "6%";
+  legend.style.right = "15px";
+  legend.style.backgroundColor = "rgba(255,255,255,0.9)";
+  legend.style.padding = "8px 12px";
+  legend.style.border = "1px solid #ccc";
+  legend.style.borderRadius = "8px";
+  legend.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+  legend.style.fontFamily = "Arial, sans-serif";
+  legend.style.fontSize = "13px";
+  legend.style.zIndex = 9999;
+
+  legend.innerHTML = `
+  <strong>Legend</strong><br>
+  <div style="margin-top:4px;">
+    <span style="display:inline-block;width:20px;height:3px;background:#ff5b02;margin-right:6px;"></span>
+    LinkingTo
+  </div>
+  <div>
+    <span style="display:inline-block;width:20px;height:3px;background:#999;margin-right:6px;"></span>
+    Dependency
+  </div>
+  <div>
+    <span style="display:inline-block;width:20px;height:3px;background:red;margin-right:6px;"></span>
+    Selected Package Imports
+  </div>
+`;
+  document.body.appendChild(legend);
 
   network.on("doubleClick", (params) => {
     if (params.nodes.length === 0) return;

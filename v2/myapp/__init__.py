@@ -5,22 +5,22 @@ from .function_dependencies import function_dependencies
 def create_app():
     app = Flask(__name__)
 
-    # serve main page
+    #serve main page
     @app.route("/")
     def index():
         return render_template("index.html")
 
-    # serve generated graph files or data
+    #serve generated graph files or data
     @app.route("/data/<path:filename>")
     def data_files(filename):
         return send_from_directory("../data", filename)
 
-    # serve generated graph HTML files
+    #serve generated graph HTML files
     @app.route("/graphs/<path:filename>")
     def serve_graph(filename):
         return send_from_directory("../data/graphs", filename)
 
-    # API endpoint for dependency analysis
+    #API endpoint for dependency analysis
     @app.route("/analyze", methods=["POST"])
     def analyze_function_dependencies():
         data = request.get_json()

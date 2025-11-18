@@ -27,6 +27,7 @@ def main():
         graph_title = f"dependency map for {args.packages[0]}"
     else:
         G = multi_root_graph(args.packages)
+        # create title
         pkg_list = ", ".join(args.packages)
         graph_title = f"multi-root dependency map ({pkg_list}"
 
