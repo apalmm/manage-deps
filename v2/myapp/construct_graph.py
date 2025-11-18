@@ -5,7 +5,6 @@ from .fetch_CRAN_data import fetch_cran_metadata
 def get_dependencies(pkg):
     skip = {  # skip these packages because they are base R packages that come pre-installed / CRAN doesn't support metadata for them
         "R",
-        "base",
         "compiler",
         "grid",
         "parallel",

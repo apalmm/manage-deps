@@ -99,5 +99,6 @@ _(Dependency Visualization and Analysis Toolkit)_
 - Transitioned program to flask
 - Successfully can call function analyze endpoint
 - Setting depth automatically as max depth, changing color of bolded lines when node selected
+- run with `python3 -m myapp [pkgs]`
 
 ---

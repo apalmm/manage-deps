@@ -25,15 +25,14 @@ def create_app():
     def analyze_function_dependencies():
         data = request.get_json()
         func = data.get("function")
-        pkgs = request.url_rule.rule.split("/")[-1]
+        pkgs = data.get("packages")
 
-        print(pkgs)
-        deps = function_dependencies(
-            func, ["tidyr", "stringr", "stringi", "cli", "stats", "tools"]
+        result = function_dependencies(
+            func, pkgs
         )
-        deps = [x for x in deps if isinstance(x, str)]
+        print(result)
+        result = [x for x in result if isinstance(x, str)]
 
-        print(deps)
-        return jsonify({"required_packages": list(deps)})
+        return jsonify({"required_packages": result})
 
     return app

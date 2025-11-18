@@ -26,17 +26,18 @@ function renderList(filteredFuncs, listEl, pkg) {
 
       depPanel.style.display = "block";
       depContent.textContent = "loading...";
-
+      console.log(fn, pkg);
       try {
         const resp = await fetch("/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ function: fn, package: pkg }),
+          body: JSON.stringify({ function: fn, packages: pkg }),
         });
 
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
 
+        console.log(data);
         if (data.required_packages && data.required_packages.length > 0) {
           depContent.innerHTML = `
             <strong>${fn}</strong> depends on:<br>
@@ -211,7 +212,7 @@ window.addEventListener("load", () => {
     layerValue.textContent = maxLayer;
     const nodes = network.body.data.nodes.get();
     nodes.forEach((n) => {
-      const layer = parseInt(n.title.match(/Layer: (\\d+)/)?.[1] || "0");
+      const layer = parseInt(n.title.match(/Layer: (\d+)/)?.[1] || "0");
       n.hidden = layer > maxLayer;
     });
     network.body.data.nodes.update(nodes);
