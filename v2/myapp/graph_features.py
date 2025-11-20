@@ -176,24 +176,23 @@ def add_info_panel(filename):
             position:absolute;
             top:10%;
             right: auto;
-            margin-left: 50px;
+            margin-left: 15px;
             width:20%;
             height:50%;
-            background:#ffffff;
+            background:#f9f9f9;
             border-left:2px solid #ccc;
             overflow-y:auto;
             font-family:Arial,sans-serif;
-            box-shadow:-3px 0 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             z-index:9999;
             border-radius:8px;
-            padding:12px;
             display:none;
         ">
-            <div id="dep-header" style="position:sticky;top:0;background:white;z-index:2;padding-bottom:6px;">
-                <h2 style="margin-top:0;">function dependencies</h2>
+            <div id="dep-header" style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding-bottom:12px; padding: 14px 16px;">
+                <h2 style="margin-top:0;">Function Dependencies</h2>
                 <button id="close-dep" style="background:#ddd;border:none;padding:4px 8px;cursor:pointer;border-radius:4px;">close</button>
             </div>
-            <div id="dep-content" style="font-size:13px;color:#333;margin-top:8px;"></div>
+            <div id="dep-content" style="color:#333; padding: 0 16px;"></div>
         </div>
     """
     with open(filename, "a", encoding="utf-8") as f:

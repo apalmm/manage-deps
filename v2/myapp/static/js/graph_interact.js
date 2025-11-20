@@ -15,40 +15,66 @@ function renderList(filteredFuncs, listEl, pkg) {
     li.style.padding = "2px 0";
     li.style.cursor = "pointer";
 
+    // inside renderList(fn, listEl, pkg)
     li.addEventListener("click", async () => {
       listEl.querySelectorAll("li").forEach((el) => {
         el.style.backgroundColor = "";
         el.style.fontWeight = "normal";
       });
-
       li.style.backgroundColor = "#e0e0e0";
       li.style.fontWeight = "bold";
 
       depPanel.style.display = "block";
-      depContent.textContent = "loading...";
+      depContent.innerHTML = `
+    <div id="dep-scroll" style="
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 6px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #ccc;
+    ">Loading dependencies...</div>
+    <div id="func-desc" style="font-size: 12px; color: #444; padding-top: 6px;">
+      Fetching package description...
+    </div>
+  `;
+
       try {
-        const resp = await fetch("/analyze", {
+        // fetch dependencies
+        const depResp = await fetch("/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ function: fn, packages: pkg }),
         });
+        if (!depResp.ok) throw new Error(`HTTP ${depResp.status}`);
+        const depData = await depResp.json();
 
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-
-        if (data.required_packages && data.required_packages.length > 0) {
-          depContent.innerHTML = `
-            <strong>${fn}</strong> depends on:<br>
-            <ul style="margin-top:4px; padding-left:18px;">
-              ${data.required_packages.map((pkg) => `<li>${pkg}</li>`).join("")}
-            </ul>
-          `;
+        const scrollEl = depContent.querySelector("#dep-scroll");
+        if (depData.required_packages && depData.required_packages.length > 0) {
+          scrollEl.innerHTML = `
+        <strong>${fn}</strong> depends on:<br>
+        <ul style="margin-top:4px; padding-left:18px;">
+          ${depData.required_packages.map((pkg) => `<li>${pkg}</li>`).join("")}
+        </ul>
+      `;
         } else {
-          depContent.textContent = `${fn} has no detected dependencies.`;
+          scrollEl.textContent = `${fn} has no detected dependencies.`;
         }
+
+        // fetch function description
+        const descResp = await fetch("/describe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ function: fn, package: pkg }),
+        });
+
+        const descData = await descResp.json();
+        const descEl = depContent.querySelector("#func-desc");
+        descEl.innerHTML = descData.description
+          ? `<strong>Description of <span style="color: red">${pkg}</span>:</strong> ${descData.description}`
+          : "<i>No description available.</i>";
       } catch (err) {
-        console.error("failed to fetch backend data:", err);
-        depContent.textContent = "failed to load dependencies.";
+        console.error("Failed to load data:", err);
+        depContent.textContent = "Failed to load function info.";
       }
     });
 
@@ -75,7 +101,9 @@ async function loadPackageFunctions() {
         (func) =>
           !func.startsWith(".__C__") &&
           !func.startsWith(".__T__") &&
-          !func.startsWith(".")
+          !func.startsWith(".") &&
+          !func.startsWith("%") &&
+          !func.includes("<-")
       );
     });
 
