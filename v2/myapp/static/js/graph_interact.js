@@ -51,7 +51,7 @@ function renderList(filteredFuncs, listEl, pkg) {
         const scrollEl = depContent.querySelector("#dep-scroll");
         if (depData.required_packages && depData.required_packages.length > 0) {
           scrollEl.innerHTML = `
-        <strong>${fn}</strong> depends on:<br>
+        <strong>${pkg} → <span style="color: red">${fn}</span></strong> depends on:<br>
         <ul style="margin-top:4px; padding-left:18px;">
           ${depData.required_packages.map((pkg) => `<li>${pkg}</li>`).join("")}
         </ul>
@@ -70,7 +70,7 @@ function renderList(filteredFuncs, listEl, pkg) {
         const descData = await descResp.json();
         const descEl = depContent.querySelector("#func-desc");
         descEl.innerHTML = descData.description
-          ? `<strong>Description of <span style="color: red">${pkg}</span>:</strong> ${descData.description}`
+          ? `<strong>Description of ${pkg} package:</strong> ${descData.description}`
           : "<i>No description available.</i>";
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -103,7 +103,9 @@ async function loadPackageFunctions() {
           !func.startsWith(".__T__") &&
           !func.startsWith(".") &&
           !func.startsWith("%") &&
-          !func.includes("<-")
+          !func.includes("<-") &&
+          !func.startsWith("_") &&
+          !(func[0] == func[0].toUpperCase())
       );
     });
 
@@ -330,7 +332,7 @@ window.addEventListener("load", () => {
     </div>
     <div>
       <div style="width:18px;height:18px;background:#a1ce40;border:1px solid #666;border-radius:50%;margin:auto;"></div>
-      <div style="font-size:11px;margin-top:2px;">Layer (0)</div>
+      <div style="font-size:11px;margin-top:2px;">Layer (1)</div>
     </div>
     <div>
       <div style="width:18px;height:18px;background:#fde74c;border:1px solid #666;border-radius:50%;margin:auto;"></div>

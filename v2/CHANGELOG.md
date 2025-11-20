@@ -118,6 +118,6 @@ _(Dependency Visualization and Analysis Toolkit)_
 - Various styling fixes
 - Made it so that when you click on a node, it highlights the FULL dependency path, not just the immediate next layer
 - Improved the graph legend to explain node size, color of the node(s) layers and also explain each of the edge colors
-- Working on fetching package descriptions
+- Working on fetching package descriptions and displaying
 
 ---
