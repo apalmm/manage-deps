@@ -94,11 +94,21 @@ _(Dependency Visualization and Analysis Toolkit)_
 
 ---
 
-### **v1.0.12 — Flask Backend, Fetching Functions**
+### **v1.1.0 — Flask Backend, Fetching Functions**
 
 - Transitioned program to flask
 - Successfully can call function analyze endpoint
 - Setting depth automatically as max depth, changing color of bolded lines when node selected
 - run with `python3 -m myapp [pkgs]`
+
+---
+
+### **v1.1.1 — Flask Backend, Fetching Functions**
+
+- Colored Import edges
+- Added graph legend
+- Transparent nodes / edges so only focusing on selected nodes
+- Server-side function filters base/system packages that are always present and not meaningful dependencies, and
+  trims invalid or blank entries that sometimes appear when find() hits global or anonymous symbols.
 
 ---

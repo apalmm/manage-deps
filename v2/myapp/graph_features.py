@@ -134,8 +134,8 @@ def add_hint(filename):
             z-index:9999;
             margin-bottom:20px;
         ">
-            💡 <b>tip:</b> double-click a node to open its cran page<br>
-            🎚 use the slider to adjust dependency layer depth
+            💡 <b>Tip:</b> double-click a node to open its CRAN page<br>
+            🎚 Use the slider to adjust dependency layer depth
         </div>
     """
     with open(filename, "a", encoding="utf-8") as f:
@@ -147,19 +147,19 @@ def add_info_panel(filename):
         <div id="info-panel" style="
             position:absolute;
             top:10%;
-            right:50px;
+            right:15px;
             width:20%;
             height:50%;
             background:#f9f9f9;
-            border-left:2px solid #ccc;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
             overflow-y:auto;
             font-family:Arial,sans-serif;
             box-shadow:-3px 0 8px rgba(0,0,0,0.1);
             z-index:9998;
             border-radius:8px;
-            padding: 0 12px 12px 12px;
         ">
-            <div id="info-header" style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding-bottom:12px;">
+            <div id="info-header" style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding-bottom:12px; padding: 14px 16px;">
                 <h2 style="margin-top: 12px;">Package Info</h2>
                 <input
                     type="text"
@@ -168,8 +168,8 @@ def add_info_panel(filename):
                     style="width:95%;padding:4px;margin-bottom:8px;"
                 />
             </div>
-            <p id="package-name" style="font-weight:bold;">select a node to see its function list</p>
-            <ul id="function-list" style="list-style-type:none;padding-left:0;margin:0;"></ul>
+            <p id="package-name" style="font-weight:bold; padding: 0 16px;">select a node to see its function list</p>
+            <ul id="function-list" style="list-style-type:none;padding: 0 16px;"></ul>
         </div>
 
         <div id="dep-panel" style="

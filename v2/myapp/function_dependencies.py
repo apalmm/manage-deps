@@ -15,13 +15,12 @@ def convert_r_to_python(obj):
 def function_dependencies(func, pkgs=None, depth=3):
     converter_ctx.set(default_converter)
 
+    # Convert Python -> R string/vector
     if pkgs:
         if isinstance(pkgs, str):
             pkgs_r = f'"{pkgs}"'
         else:
-            pkgs_r = (
-                "c(" + ",".join([f'"{p}"' for p in pkgs]) + ")"
-            )  # list version (not implemented yet)
+            pkgs_r = "c(" + ",".join([f'"{p}"' for p in pkgs]) + ")"
     else:
         pkgs_r = "character()"
 
@@ -43,7 +42,7 @@ def function_dependencies(func, pkgs=None, depth=3):
                     library(pkg, character.only = TRUE)
                 }}
 
-                # also load dependencies of the package(s)
+                # load recursive dependencies too
                 all_deps <- unique(unlist(tools::package_dependencies(extra_pkgs, recursive=TRUE)))
                 for (dep in all_deps) {{
                     if (!requireNamespace(dep, quietly = TRUE))
@@ -93,4 +92,22 @@ def function_dependencies(func, pkgs=None, depth=3):
             find_function_packages("{func}")
         """)
 
-    return convert_r_to_python(res)
+    # Convert to Python
+    result = convert_r_to_python(res)
+
+    # Filter out unwanted or meaningless results
+    # ignore_patterns = {
+    #     "base", "methods", "utils", "stats", "graphics", "grDevices",
+    #     "datasets", "tools", "compiler", "codetools"
+    # }
+
+    # Keep only meaningful, user-installed or high-level packages
+    filtered = [
+        pkg for pkg in result
+        if isinstance(pkg, str)
+        # and pkg not in ignore_patterns
+        and not pkg.startswith("package:")
+        and pkg.strip() != ""
+    ]
+
+    return filtered

@@ -24,12 +24,12 @@ def main():
     # build dependency graph
     if len(args.packages) == 1:
         G = build_graph(args.packages[0])
-        graph_title = f"dependency map for {args.packages[0]}"
+        graph_title = f"Dependency Map for {args.packages[0]}"
     else:
         G = multi_root_graph(args.packages)
         # create title
         pkg_list = ", ".join(args.packages)
-        graph_title = f"multi-root dependency map ({pkg_list}"
+        graph_title = f"Multi-root Dependency Map ({pkg_list}"
 
     # make sure output dir exists
     output_dir = os.path.abspath(

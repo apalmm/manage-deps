@@ -26,7 +26,6 @@ function renderList(filteredFuncs, listEl, pkg) {
 
       depPanel.style.display = "block";
       depContent.textContent = "loading...";
-      console.log(fn, pkg);
       try {
         const resp = await fetch("/analyze", {
           method: "POST",
@@ -37,7 +36,6 @@ function renderList(filteredFuncs, listEl, pkg) {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
 
-        console.log(data);
         if (data.required_packages && data.required_packages.length > 0) {
           depContent.innerHTML = `
             <strong>${fn}</strong> depends on:<br>
@@ -91,6 +89,38 @@ async function loadPackageFunctions() {
 async function init(network) {
   packageData = await loadPackageFunctions();
 
+  // recursive dependency chain traversal
+  function getDependencyChain(nodeId, edges) {
+    const visited = new Set();
+    const chainEdges = new Set();
+
+    function traverseDown(id) {
+      if (visited.has(id)) return;
+      visited.add(id);
+      edges.forEach((e) => {
+        if (e.from === id && e.title !== "LinkingTo") {
+          chainEdges.add(e.id);
+          traverseDown(e.to);
+        }
+      });
+    }
+
+    function traverseUp(id) {
+      if (visited.has(id)) return;
+      visited.add(id);
+      edges.forEach((e) => {
+        if (e.to === id && e.title !== "LinkingTo") {
+          chainEdges.add(e.id);
+          traverseUp(e.from);
+        }
+      });
+    }
+
+    traverseDown(nodeId);
+    traverseUp(nodeId);
+    return { visited, chainEdges };
+  }
+
   network.on("selectNode", (params) => {
     if (params.nodes.length === 0) return;
 
@@ -98,46 +128,41 @@ async function init(network) {
     const node = network.body.data.nodes.get(nodeId);
     const pkg = node.label;
 
-    // Get all edges and nodes
     const allEdges = network.body.data.edges.get();
     const allNodes = network.body.data.nodes.get();
 
-    // Identify outgoing edges and their target node IDs
-    const outgoingEdges = allEdges.filter((e) => e.from === nodeId);
-    const connectedNodeIds = new Set([
-      nodeId,
-      ...outgoingEdges.map((e) => e.to),
-    ]);
+    const { visited, chainEdges } = getDependencyChain(nodeId, allEdges);
 
-    // Reset all edges to base color and width
+    // reset all edges first
     const resetEdges = allEdges.map((e) => ({
       id: e.id,
-      color: { color: e.type === "LinkingTo" ? "#ff5b02" : "#999" },
+      color: e.title === "LinkingTo" ? "#ff5b02" : "#999",
       width: 1,
-      opacity: 0.2, // fade everything initially
+      opacity: chainEdges.has(e.id) ? 1.0 : 0.1,
     }));
 
-    // Highlight outgoing edges
-    const highlightedEdges = outgoingEdges.map((e) => ({
-      id: e.id,
-      color: "red",
-      width: 3,
-      opacity: 1.0,
-    }));
+    // highlight dependency edges in red
+    const highlightedEdges = allEdges
+      .filter((e) => chainEdges.has(e.id))
+      .map((e) => ({
+        id: e.id,
+        color: "red",
+        width: 3,
+        opacity: 1.0,
+      }));
 
-    // Dim unrelated edges
     network.body.data.edges.update(resetEdges);
     network.body.data.edges.update(highlightedEdges);
 
-    // Fade all nodes except the selected + connected ones
+    // fade unrelated nodes
     const updatedNodes = allNodes.map((n) => ({
       id: n.id,
-      opacity: connectedNodeIds.has(n.id) ? 1.0 : 0.2,
-      borderWidth: 3,
+      opacity: visited.has(n.id) ? 1.0 : 0.2,
+      borderWidth: 1,
     }));
     network.body.data.nodes.update(updatedNodes);
 
-    // Update side panels and function list
+    // update function list
     const nameEl = document.getElementById("package-name");
     const listEl = document.getElementById("function-list");
     const searchEl = document.getElementById("function-search");
@@ -160,13 +185,12 @@ async function init(network) {
   });
 
   network.on("deselectNode", () => {
-    // Reset edges and nodes to normal appearance
     const edges = network.body.data.edges.get();
     const nodes = network.body.data.nodes.get();
 
     const resetEdges = edges.map((e) => ({
       id: e.id,
-      color: { color: e.type === "LinkingTo" ? "#ff5b02" : "#999" },
+      color: e.title === "LinkingTo" ? "#ff5b02" : "#999",
       width: 1,
       opacity: 1.0,
     }));
@@ -241,35 +265,65 @@ window.addEventListener("load", () => {
     network.body.data.edges.update(edges);
   });
 
-  // Legend panel
+  //improved discrete legend panel
   const legend = document.createElement("div");
   legend.id = "graph-legend";
   legend.style.position = "absolute";
   legend.style.bottom = "6%";
   legend.style.right = "15px";
-  legend.style.backgroundColor = "rgba(255,255,255,0.9)";
-  legend.style.padding = "8px 12px";
+  legend.style.backgroundColor = "rgba(255,255,255,0.97)";
+  legend.style.padding = "14px 16px";
   legend.style.border = "1px solid #ccc";
-  legend.style.borderRadius = "8px";
-  legend.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+  legend.style.borderRadius = "10px";
+  legend.style.boxShadow = "0 2px 6px rgba(0,0,0,0.25)";
   legend.style.fontFamily = "Arial, sans-serif";
   legend.style.fontSize = "13px";
   legend.style.zIndex = 9999;
-
   legend.innerHTML = `
-  <strong>Legend</strong><br>
-  <div style="margin-top:4px;">
-    <span style="display:inline-block;width:20px;height:3px;background:#ff5b02;margin-right:6px;"></span>
-    LinkingTo
+  <strong style="font-size:14px;">Legend</strong>
+  <div style="margin-top:10px;margin-bottom:6px;">
+    <span style="display:inline-block;width:24px;height:3px;background:#ff5b02;margin-right:6px;"></span>
+    <strong>LinkingTo</strong> → compiled dependency (C/C++ interface between packages)
   </div>
-  <div>
-    <span style="display:inline-block;width:20px;height:3px;background:#999;margin-right:6px;"></span>
-    Dependency
+  <div style="margin-bottom:6px;">
+    <span style="display:inline-block;width:24px;height:3px;background:#999;margin-right:6px;"></span>
+    <strong>Imports</strong> → standard dependency used by package functions
   </div>
-  <div>
-    <span style="display:inline-block;width:20px;height:3px;background:red;margin-right:6px;"></span>
-    Selected Package Imports
+  <div style="margin-bottom:10px;">
+    <span style="display:inline-block;width:24px;height:3px;background:red;margin-right:6px;"></span>
+    <strong>Highlighted path</strong> → active dependency chain from the selected node
   </div>
+  <hr style="margin:8px 0;">
+  <div style="margin-bottom:12px;font-weight:bold;">Node color by dependency layer depth</div>
+  <div style="display:flex;justify-content:space-around;align-items:end;gap:6px;text-align:center; margin-bottom:12px;">
+    <div>
+      <div style="width:18px;height:18px;background:#5fc8f4;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;"><b>Root package</b></div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#a1ce40;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (0)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#fde74c;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (2)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#ff8330;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (3)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#e55934;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (4)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#7b5e7b;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (5+)</div>
+    </div>
+  </div>
+  <div style="font-size:12px;text-align:center;margin-top:6px;color:#444;">Root Package → Deeper dependency layers</div>
+  <hr style="margin:10px 0;">
+  <div><strong>Node size</strong> → larger = higher dependency importance</div>
 `;
   document.body.appendChild(legend);
 
