@@ -188,8 +188,8 @@ def add_info_panel(filename):
             border-radius:8px;
             display:none;
         ">
-            <div id="dep-header" style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding-bottom:12px; padding: 14px 16px;">
-                <h2>Function Dependencies</h2>
+            <div id="dep-header" style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding-bottom:12px; padding: 0px 16px">
+                <h2 style="margin-top: 12px">Function Dependencies</h2>
                 <button id="close-dep" style="background:#ddd;border:none;padding:4px 8px;cursor:pointer;border-radius:4px;">close</button>
             </div>
             <div id="dep-content" style="color:#333; padding: 0 16px;"></div>

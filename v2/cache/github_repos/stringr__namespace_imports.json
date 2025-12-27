@@ -1,0 +1,1 @@
+{"import_map": {"glue": "glue", "deprecated": "lifecycle"}, "import_pkgs": ["rlang", "stringi"]}

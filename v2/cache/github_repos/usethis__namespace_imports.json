@@ -1,0 +1,1 @@
+{"import_map": {"glue": "glue", "glue_collapse": "glue", "glue_data": "glue", "deprecated": "lifecycle", "map": "purrr", "map_chr": "purrr", "map_int": "purrr", "map_lgl": "purrr", "available.packages": "utils"}, "import_pkgs": ["fs", "rlang"]}

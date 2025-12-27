@@ -6,3 +6,5 @@ __pycache__/
 .env
 data/raw
 data/graphs
+cache/descriptions
+cache/github_repos
