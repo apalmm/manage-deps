@@ -8,25 +8,33 @@
 #
 # How I do it (static-ish):
 #   1) Pull the package source from GitHub (best-effort search + caching).
-#   2) Extract function bodies (regex + brace matching).
-#   3) For a target function body, collect dependencies from:
+#   2) Extract function bodies (regex + brace matching) + the roxygen block directly above each
+#      function definition (so @seealso links count as dependency signals).
+#   3) For a target function, collect dependency signals from:
 #        - explicit namespace calls: pkg::fun / pkg:::fun
 #        - namespace loaders: library/require/requireNamespace/loadNamespace
-#        - bare calls resolved via NAMESPACE imports (importFrom/import)
+#        - getExportedValue("pkg", "fun")
+#        - NAMESPACE imports:
+#            * importFrom(pkg, sym) gives exact symbol -> package mapping
+#            * import(pkg) is coarse, so I try to resolve bare calls by checking exported symbols
+#              of imported packages (best-effort)
+#        - roxygen references:
+#            * @seealso [pkg::fun()] or anything similar is treated as a dependency signal
+#              because it’s usually the “real implementation this wraps”
 #   4) Recurse on:
 #        - internal/local calls inside the same package
 #        - cross-package calls (pkg::fun) and imported-symbol calls (depth-limited)
 #
 # Limits I’m not pretending away:
-#   - This won’t be “perfect actual runtime invokes” because R has dynamic features
-#     (S3 dispatch, NSE, get/do.call/eval/parse, etc.). I can flag those later.
+#   - This won’t be “perfect runtime invokes” because R is dynamic (S3 dispatch, NSE,
+#     get/do.call/eval/parse, etc.). I can optionally flag “dynamic-ish” patterns later.
 #   - Regex parsing of R is inherently brittle. Brace matching helps, but an AST pass
-#     (in R or tree-sitter) is the real endgame if I need maximal correctness.
+#     (in R or tree-sitter) is the endgame if I need maximal correctness.
 #
-# The key upgrade vs my earlier version:
-#   - NAMESPACE parsing is now robust enough to handle the real formatting in packages
-#     like stringr, and it recognizes both importFrom(...) and import(...).
-#   - This matters because tidyverse code often calls imported symbols without pkg::.
+# Design choice I’m making here:
+#   - When resolution is ambiguous (multiple imported packages export the same symbol),
+#     I include all candidates rather than guessing. That biases toward slight overcounting
+#     instead of silently missing real deps.
 
 import os
 import re
@@ -77,14 +85,19 @@ if GITHUB_TOKEN:
     _headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
 
 
-def _cache_path(url: str) -> Path:
+def _cache_path(url):
     h = hashlib.sha1(url.encode("utf-8")).hexdigest()
     return CACHE_DIR / f"{h}.json"
 
 
-def cached_get(url: str):
+def cached_get(url):
     """
     GET with disk cache + retries.
+
+    The point is to make recursion cheap:
+      - if it’s cached, use cache
+      - if GitHub rate limits (403/429), back off and retry
+      - cache raw text even for JSON so we can replay without network
     """
     cache_file = _cache_path(url)
     if cache_file.exists():
@@ -100,7 +113,7 @@ def cached_get(url: str):
         try:
             r = _session.get(url, headers=_headers, timeout=DEFAULT_TIMEOUT)
 
-            # GitHub rate limits / abuse protection show up as 403/429 a lot
+            # rate limits / abuse protection show up as 403/429
             if r.status_code in (403, 429):
                 time.sleep(min(2**attempt, 30))
                 continue
@@ -129,14 +142,18 @@ _REPO_CACHE = {}  # pkg -> "user/repo"
 _BRANCH_CACHE = {}  # "user/repo" -> default branch
 _TREE_CACHE = {}  # "user/repo" -> [raw file urls]
 _SOURCE_CACHE = {}  # "user/repo" -> combined source string
+
 _DEFS_CACHE = {}  # pkg -> {func_name -> body}
+_DOCS_CACHE = {}  # pkg -> {func_name -> roxygen text}
 
 _NAMESPACE_CACHE = {}  # "user/repo" -> NAMESPACE text (only stored if non-empty)
-_IMPORT_MAP_CACHE = {}  # pkg -> {"symbol": "package"} for importFrom resolution
-_IMPORT_PKG_CACHE = {}  # pkg -> set(["package"]) for import(pkg) coarse deps
+_IMPORT_MAP_CACHE = {}  # pkg -> {symbol: package} from importFrom
+_IMPORT_PKG_CACHE = {}  # pkg -> set(packages) from import(pkg)
+
+_EXPORT_SYMS_CACHE = {}  # pkg -> set(exported symbols)
 
 
-def find_github_repo(pkg: str):
+def find_github_repo(pkg):
     """
     Best-effort repo discovery via GitHub search.
     This can pick the wrong repo; the thesis-safe path is CRAN metadata -> repo URL.
@@ -150,18 +167,20 @@ def find_github_repo(pkg: str):
         _REPO_CACHE[key] = None
         return None
 
+    # prefer exact repo name == package name if it exists
     for repo in data["items"]:
         if repo.get("name", "").lower() == key:
             full = repo.get("full_name")
             _REPO_CACHE[key] = full
             return full
 
+    # otherwise just take the top result
     full = data["items"][0].get("full_name")
     _REPO_CACHE[key] = full
     return full
 
 
-def _repo_default_branch_tree_sha(full_name: str):
+def _repo_default_branch_tree_sha(full_name):
     """
     Get git tree SHA for default branch and remember the branch name.
     """
@@ -186,7 +205,7 @@ def _repo_default_branch_tree_sha(full_name: str):
         return None
 
 
-def _raw_url(full_name: str, path: str) -> str:
+def _raw_url(full_name, path):
     """
     Prefer explicit default branch for raw file fetches; fall back to HEAD.
     """
@@ -197,7 +216,7 @@ def _raw_url(full_name: str, path: str) -> str:
     return f"https://raw.githubusercontent.com/{user}/{repo}/HEAD/{path.lstrip('/')}"
 
 
-def get_repo_r_files(full_name: str):
+def get_repo_r_files(full_name):
     """
     List all .R files using the recursive git tree API.
     """
@@ -226,7 +245,7 @@ def get_repo_r_files(full_name: str):
     return urls
 
 
-def load_all_source(full_name: str):
+def load_all_source(full_name):
     """
     Combine all .R files into one big string (cached).
     """
@@ -271,10 +290,13 @@ def load_all_source(full_name: str):
 # ----------------------------
 
 
-def load_namespace_file(full_name: str):
+def load_namespace_file(full_name):
     """
-    Fetch raw NAMESPACE. The important detail: I *don’t* permanently cache empty string
-    on failure, because that causes import resolution to silently stay broken forever.
+    Fetch raw NAMESPACE.
+
+    Important detail:
+      - I don’t permanently cache empty string on failure
+        because that makes import/export resolution silently broken forever.
     """
     if full_name in _NAMESPACE_CACHE and _NAMESPACE_CACHE[full_name]:
         return _NAMESPACE_CACHE[full_name]
@@ -292,14 +314,15 @@ def load_namespace_file(full_name: str):
     return txt
 
 
-def _scan_calls(ns_text: str, call_name: str):
+def _scan_calls(ns_text, call_name):
     """
-    Very small "call scanner" for NAMESPACE.
-    It finds occurrences of e.g. importFrom( ... ) and returns the raw arg string inside the parens.
-    This avoids the classic regex bug where .*? stops at the wrong ')' when formatting gets weird.
+    Small call-scanner for NAMESPACE.
+    Finds occurrences like importFrom(...) and returns the arg string inside the parens.
+
+    This avoids a bunch of regex footguns with multiline formatting.
     """
     out = []
-    s = re.sub(r"#.*", "", ns_text)  # drop comments
+    s = re.sub(r"#.*", "", ns_text)  # strip comments
     i = 0
     needle = call_name + "("
 
@@ -326,25 +349,17 @@ def _scan_calls(ns_text: str, call_name: str):
     return out
 
 
-def parse_namespace_imports(namespace_text: str):
+def parse_namespace_imports(namespace_text):
     """
     Return:
       - import_map: symbol -> package  (from importFrom)
       - import_pkgs: set(packages)      (from import)
-
-    This is intentionally pragmatic:
-      - importFrom gives exact symbol mapping -> best case
-      - import(pkg) is a coarse signal (imports all exported symbols), so I store it separately
-
-    That "import(pkg)" path matters because some packages don’t list thousands of symbols
-    as importFrom; they just import the package and call its symbols bare.
     """
     import_map = {}
     import_pkgs = set()
 
-    # ---- importFrom(pkg, sym1, sym2, ...) ----
+    # importFrom(pkg, sym1, sym2, ...)
     for arg_blob in _scan_calls(namespace_text, "importFrom"):
-        # split once on the first comma: left is pkg, right is symbol list
         parts = arg_blob.split(",", 1)
         if not parts:
             continue
@@ -363,7 +378,7 @@ def parse_namespace_imports(namespace_text: str):
         for sym in syms:
             import_map[sym] = pkg
 
-    # ---- import(pkg1, pkg2, ...) ----
+    # import(pkg1, pkg2, ...)
     for arg_blob in _scan_calls(namespace_text, "import"):
         pkgs = [p.strip().strip("'\"") for p in arg_blob.split(",")]
         for p in pkgs:
@@ -373,13 +388,39 @@ def parse_namespace_imports(namespace_text: str):
     return import_map, import_pkgs
 
 
-def get_import_info_for_pkg(pkg: str, debug: bool = False):
+def parse_namespace_exports(namespace_text):
+    """
+    Return:
+      - export_syms: set(symbols) from export(sym1, sym2, ...)
+      - export_patterns: list(regex strings) from exportPattern("regex")
+
+    I only need this for one thing:
+      - resolving import(pkg) cases by asking “does pkg export symbol X”
+    """
+    export_syms = set()
+    export_patterns = []
+
+    for arg_blob in _scan_calls(namespace_text, "export"):
+        syms = [p.strip().strip("'\"") for p in arg_blob.split(",")]
+        for s in syms:
+            if re.match(r"^[A-Za-z][A-Za-z0-9_.]*$", s):
+                export_syms.add(s)
+
+    for arg_blob in _scan_calls(namespace_text, "exportPattern"):
+        raw = arg_blob.strip().strip("'\"")
+        if raw:
+            export_patterns.append(raw)
+
+    return export_syms, export_patterns
+
+
+def get_import_info_for_pkg(pkg, debug=False):
     """
     Memoized + disk cached:
       - import_map: symbol -> package  (from importFrom)
       - import_pkgs: set(packages)     (from import)
 
-    Disk cache prevents re-fetching/re-parsing every run.
+    Disk cache keeps repeated runs from re-fetching/re-parsing NAMESPACE constantly.
     """
     key = pkg.lower().strip()
     if key in _IMPORT_MAP_CACHE and key in _IMPORT_PKG_CACHE:
@@ -416,9 +457,8 @@ def get_import_info_for_pkg(pkg: str, debug: bool = False):
     mp, ip = parse_namespace_imports(ns_text)
 
     if debug:
-        hits = [k for k, v in mp.items() if v == "stringi" and k.startswith("stri_")]
         print(
-            f"[NS] pkg={pkg} importFrom_syms={len(mp)} import_pkgs={len(ip)} stringi_stri_={len(hits)}",
+            f"[NS] pkg={pkg} importFrom_syms={len(mp)} import_pkgs={len(ip)}",
             flush=True,
         )
 
@@ -436,19 +476,92 @@ def get_import_info_for_pkg(pkg: str, debug: bool = False):
     return mp, ip
 
 
+def get_exported_symbols(pkg, debug=False):
+    """
+    Build a set of exported symbols for a package, for resolving import(pkg) calls.
+
+    Strategy:
+      - Parse that package's NAMESPACE:
+          export(a, b, c) -> explicit exports
+          exportPattern("regex") -> apply regex against function defs we extracted
+      - Cache it in memory + on disk because recursion calls this a lot.
+
+    It’s best-effort, but it works well enough to map “bare call name(…)” -> package.
+    """
+    key = pkg.lower().strip()
+    if key in _EXPORT_SYMS_CACHE:
+        return _EXPORT_SYMS_CACHE[key]
+
+    disk_file = CACHE_DIR / f"{key}__namespace_exports.json"
+    if disk_file.exists():
+        try:
+            blob = json.loads(disk_file.read_text(encoding="utf-8"))
+            syms = set(blob.get("export_syms", []))
+            _EXPORT_SYMS_CACHE[key] = syms
+            return syms
+        except Exception:
+            pass
+
+    repo = find_github_repo(pkg)
+    if not repo:
+        _EXPORT_SYMS_CACHE[key] = set()
+        return set()
+
+    ns_text = load_namespace_file(repo)
+    if not ns_text.strip():
+        _EXPORT_SYMS_CACHE[key] = set()
+        return set()
+
+    export_syms, export_patterns = parse_namespace_exports(ns_text)
+
+    # exportPattern("...") means “export everything matching regex”
+    # I apply it to the function defs I can see in source (best-effort).
+    if export_patterns:
+        _, defs, _docs = _get_defs_for_pkg(pkg)
+        if defs:
+            for pat in export_patterns:
+                try:
+                    rx = re.compile(pat)
+                except Exception:
+                    continue
+                for name in defs.keys():
+                    if rx.search(name):
+                        export_syms.add(name)
+
+    if debug:
+        print(
+            f"[EXP] pkg={pkg} export_syms={len(export_syms)} export_patterns={len(export_patterns)}",
+            flush=True,
+        )
+
+    _EXPORT_SYMS_CACHE[key] = export_syms
+    try:
+        disk_file.write_text(
+            json.dumps({"export_syms": sorted(list(export_syms))}),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+    return export_syms
+
+
 # ----------------------------
 # R source parsing helpers (best-effort)
 # ----------------------------
 
 
-def extract_function_defs(source: str):
+def extract_function_defs(source):
     """
-    Best-effort extraction of function bodies using:
-      - regex to find "name <- function(...) {"
-      - brace matching to find the end of the function body
+    Extract function bodies + roxygen blocks directly above each definition.
 
-    This is still not a real parser, but it fixes the worst failure mode:
-      "slice until next function definition" (which is just wrong).
+    Returns:
+      defs: {func_name -> body_text}
+      docs: {func_name -> roxygen_text}  (joined "#'" lines, with "#'" stripped)
+
+    The roxygen capture is important because stuff like:
+      #' @seealso [stringi::stri_count()] which this wraps
+    is a real dependency signal even if the body calls stringi functions indirectly.
     """
     pat = re.compile(
         r"(?P<name>[A-Za-z][A-Za-z0-9_.]*)\s*(?:<-|=)\s*function\s*\((?P<args>.*?)\)\s*\{",
@@ -456,20 +569,46 @@ def extract_function_defs(source: str):
     )
 
     defs = {}
+    docs = {}
+
     for m in pat.finditer(source):
         name = m.group("name")
+
+        # body
         start = m.end()
         end = _find_matching_brace(source, start - 1)
         if end is None:
             continue
         defs[name] = source[start:end].strip()
-    return defs
+
+        # roxygen: contiguous "#'" lines immediately above definition
+        roxy = []
+        line_start = source.rfind("\n", 0, m.start())
+        i = line_start if line_start != -1 else 0
+
+        while i > 0:
+            prev_nl = source.rfind("\n", 0, i)
+            line = source[prev_nl + 1 : i].rstrip("\r")
+
+            if line.strip().startswith("#'"):
+                roxy.append(line.strip()[2:].lstrip())
+                i = prev_nl
+                continue
+
+            break
+
+        if roxy:
+            docs[name] = "\n".join(reversed(roxy)).strip()
+        else:
+            docs[name] = ""
+
+    return defs, docs
 
 
-def _find_matching_brace(text: str, open_brace_pos: int):
+def _find_matching_brace(text, open_brace_pos):
     """
-    Given index of '{', find matching '}'.
-    Tries to ignore braces in strings/comments to avoid totally dumb mismatches.
+    Given index of '{', find the matching '}'.
+    Tries to ignore braces in strings/comments so it doesn’t miscount instantly.
     """
     if open_brace_pos < 0 or open_brace_pos >= len(text) or text[open_brace_pos] != "{":
         return None
@@ -530,9 +669,17 @@ def _find_matching_brace(text: str, open_brace_pos: int):
     return None
 
 
-def extract_pkg_calls(source: str):
+def extract_pkg_calls(source):
     """
     Extract package names from obvious namespace usage / loaders.
+
+    This is intentionally simple:
+      - pkg::fun or pkg:::fun
+      - library(pkg), require(pkg)
+      - requireNamespace("pkg"), loadNamespace("pkg")
+      - getExportedValue("pkg", "fun")
+
+    This also works on roxygen text (e.g. @seealso [pkg::fun()]).
     """
     deps = set()
 
@@ -566,10 +713,14 @@ def extract_pkg_calls(source: str):
     return deps
 
 
-def extract_func_calls(source: str):
+def extract_func_calls(source):
     """
-    Grab bare calls like foo( ... ).
-    This includes a lot of noise, but I resolve it using local defs + NAMESPACE import maps.
+    Grab bare calls like foo(...).
+
+    This is noisy by nature, so I don’t treat it as dependencies by itself.
+    I only use it after I can resolve a name as:
+      - local function definition in this pkg, or
+      - imported symbol (via NAMESPACE)
     """
     calls = re.findall(r"\b([A-Za-z][A-Za-z0-9_.]*)\s*\(", source)
 
@@ -594,45 +745,53 @@ def extract_func_calls(source: str):
 # ----------------------------
 
 
-def _get_defs_for_pkg(pkg: str):
+def _get_defs_for_pkg(pkg):
     """
-    Memoized: return (repo, defs) where defs is {func -> body}.
+    Memoized: return (repo, defs, docs)
+      - defs: {func -> body}
+      - docs: {func -> roxygen text}
     """
     key = pkg.lower().strip()
-    if key in _DEFS_CACHE:
-        return _REPO_CACHE.get(key), _DEFS_CACHE[key]
+    if key in _DEFS_CACHE and key in _DOCS_CACHE:
+        return _REPO_CACHE.get(key), _DEFS_CACHE[key], _DOCS_CACHE[key]
 
     repo = find_github_repo(pkg)
     _REPO_CACHE[key] = repo
     if not repo:
         _DEFS_CACHE[key] = {}
-        return None, {}
+        _DOCS_CACHE[key] = {}
+        return None, {}, {}
 
     src = load_all_source(repo)
     if not src:
         _DEFS_CACHE[key] = {}
-        return repo, {}
+        _DOCS_CACHE[key] = {}
+        return repo, {}, {}
 
-    defs = extract_function_defs(src)
+    defs, docs = extract_function_defs(src)
     _DEFS_CACHE[key] = defs
-    return repo, defs
+    _DOCS_CACHE[key] = docs
+    return repo, defs, docs
 
 
 def trace_dependencies(
-    pkg: str,
-    func: str,
+    pkg,
+    func,
     *,
-    depth: int = 3,
+    depth=3,
     seen=None,
-    include_base_stdlib: bool = False,
-    debug: bool = False,
+    include_base_stdlib=False,
+    debug=False,
 ):
     """
     Trace dependency packages reachable from (pkg, func).
 
-    If you want one mental model:
-      - I'm doing a DFS over a call graph where nodes are (pkg, func),
-        edges are either local calls, imported-symbol calls, or explicit pkg:: calls.
+    Mental model:
+      - DFS over a call graph where nodes are (pkg, func)
+      - edges come from:
+          (a) local calls resolved against defs in same pkg
+          (b) explicit pkg::fun calls (from body or roxygen)
+          (c) imported-symbol calls resolved via NAMESPACE
     """
     if seen is None:
         seen = set()
@@ -645,23 +804,32 @@ def trace_dependencies(
         return set()
     seen.add(node)
 
-    _, defs = _get_defs_for_pkg(pkg)
+    _repo, defs, docs = _get_defs_for_pkg(pkg)
     if not defs:
         return set()
 
-    body = defs.get(func)
-    if not body:
+    body = defs.get(func) or ""
+    roxy = docs.get(func) or ""
+
+    if not body and not roxy:
         return set()
+
+    if debug:
+        print(f"[TRACE] {pkg}::{func} depth={depth}", flush=True)
+
+    # For dependency signals I analyze roxygen + body together.
+    # For bare function call parsing I stick to body only (roxygen is too noisy).
+    text = roxy + "\n\n" + body
 
     deps = set()
 
-    # 1) explicit external signals
-    deps |= extract_pkg_calls(body)
+    # 1) obvious external signals (pkg::, library(), requireNamespace(), etc.)
+    deps |= extract_pkg_calls(text)
 
-    # 2) bare calls list (used for local expansion + import resolution)
+    # 2) bare calls list
     bare_calls = extract_func_calls(body)
 
-    # 3) local expansion
+    # 3) local expansion: bare call matches local function definition
     for name in bare_calls:
         if name in defs:
             deps |= trace_dependencies(
@@ -673,10 +841,10 @@ def trace_dependencies(
                 debug=debug,
             )
 
-    # 4) explicit pkg::fun cross-package expansion
+    # 4) explicit pkg::fun cross-package expansion (scan roxygen + body)
     for sub_pkg, sub_func in re.findall(
         r"\b([A-Za-z][A-Za-z0-9_.]*):::{0,2}([A-Za-z][A-Za-z0-9_.]*)\b",
-        body,
+        text,
     ):
         deps.add(sub_pkg)
         if sub_pkg in BASE_PACKAGES and not include_base_stdlib:
@@ -691,28 +859,17 @@ def trace_dependencies(
         )
 
     # 5) NAMESPACE import resolution
-    import_map, import_pkgs = get_import_info_for_pkg(
-        pkg, debug=(debug and pkg.lower() == "stringr")
-    )
+    import_map, import_pkgs = get_import_info_for_pkg(pkg, debug=debug)
 
+    # exact symbol mappings from importFrom(pkg, sym)
     for name in bare_calls:
         if name in defs:
             continue
-
-        # Best case: imported symbol mapping says exactly where it came from.
         sub_pkg = import_map.get(name)
-
-        # Next-best case: import(pkg) without symbols.
-        # Here I'm intentionally pragmatic: if a package imported stringi, and I see stri_*,
-        # it’s overwhelmingly likely it came from stringi.
-        if not sub_pkg and "stringi" in import_pkgs and name.startswith("stri_"):
-            sub_pkg = "stringi"
-
         if not sub_pkg:
             continue
 
         deps.add(sub_pkg)
-
         if sub_pkg in BASE_PACKAGES and not include_base_stdlib:
             continue
 
@@ -725,6 +882,44 @@ def trace_dependencies(
             debug=debug,
         )
 
+    # coarse import(pkg) resolution:
+    # if this package imports packages wholesale, resolve bare calls by checking which
+    # imported packages actually export that symbol.
+    if import_pkgs:
+        unresolved = [n for n in bare_calls if (n not in defs and n not in import_map)]
+        if unresolved:
+            export_sets = {}
+            for p in import_pkgs:
+                if p in BASE_PACKAGES and not include_base_stdlib:
+                    continue
+                export_sets[p] = get_exported_symbols(p, debug=False)
+
+            for name in unresolved:
+                candidates = []
+                for p, esyms in export_sets.items():
+                    if name in esyms:
+                        candidates.append(p)
+
+                if not candidates:
+                    continue
+
+                if debug and candidates:
+                    print(
+                        f"[IMPORT] {pkg} bare_call={name} candidates={candidates}",
+                        flush=True,
+                    )
+
+                for sub_pkg in candidates:
+                    deps.add(sub_pkg)
+                    deps |= trace_dependencies(
+                        sub_pkg,
+                        name,
+                        depth=depth - 1,
+                        seen=seen,
+                        include_base_stdlib=include_base_stdlib,
+                        debug=debug,
+                    )
+
     if not include_base_stdlib:
         deps = {d for d in deps if d not in BASE_PACKAGES}
 
@@ -732,13 +927,13 @@ def trace_dependencies(
 
 
 def function_dependencies(
-    func: str,
+    func,
     pkgs,
     *,
-    depth: int = 4,
-    include_base_stdlib: bool = False,
-    include_root_pkg: bool = True,
-    debug: bool = False,
+    depth=4,
+    include_base_stdlib=False,
+    include_root_pkg=True,
+    debug=False,
 ):
     """
     Entry point.

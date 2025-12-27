@@ -41,9 +41,9 @@ function ensurePackagePanel() {
   panel.innerHTML = `
     <div style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding: 14px 16px;border-bottom:1px solid #ddd;">
       <h2 style="margin:0;">Package Info</h2>
-      <div id="pkg-panel-name" style="margin-top:6px;font-weight:bold;font-size:14px;"></div>
+      <div id="pkg-panel-name" style="color: red; margin-top:6px;font-weight:bold;font-size:16px;"></div>
     </div>
-    <div id="pkg-panel-desc" style="color:#333; padding: 12px 16px; font-size: 12px; line-height: 1.35;">
+    <div id="pkg-panel-desc" style="color:#333; padding: 12px 16px; font-size: 14px; line-height: 1.35;">
       <i>Select a package to see its description.</i>
     </div>
   `;
@@ -160,7 +160,7 @@ function renderList(filteredFuncs, listEl, pkg) {
           margin-bottom: 8px;
           border-bottom: 1px solid #ccc;
         ">Loading dependencies...</div>
-        <div id="func-desc" style="font-size: 12px; color: #444; padding-top: 6px;">
+        <div id="func-desc" style="font-size: 12px; color: #444; padding-top: 6px; padding-bottom: 8px;">
           Fetching function description...
         </div>
       `;
@@ -178,7 +178,7 @@ function renderList(filteredFuncs, listEl, pkg) {
         const scrollEl = depContent.querySelector("#dep-scroll");
         if (depData.required_packages && depData.required_packages.length > 0) {
           scrollEl.innerHTML = `
-            <strong>${pkg} → <span style="color: red">${fn}</span></strong> depends on:<br>
+            <strong><span style="color: red">${fn}</span></strong> depends on:<br>
             <ul style="margin-top:4px; padding-left:18px;">
               ${depData.required_packages.map((p) => `<li>${p}</li>`).join("")}
             </ul>
@@ -198,7 +198,7 @@ function renderList(filteredFuncs, listEl, pkg) {
         const descData = await descResp.json();
         const descEl = depContent.querySelector("#func-desc");
         descEl.innerHTML = descData.description
-          ? `<strong>${pkg}::${fn}</strong><div style="margin-top:4px;">${descData.description}</div>`
+          ? `<div style="margin-top:4px; margin-bottom: 4px">${descData.description}</div>`
           : "<i>No description available.</i>";
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -217,6 +217,7 @@ async function loadPackageFunctions() {
 
     const data = await resp.json();
 
+    //ignore low level calls
     Object.keys(data).forEach((pkg) => {
       data[pkg] = data[pkg].filter(
         (func) =>

@@ -168,7 +168,7 @@ def add_info_panel(filename):
                     style="width:95%;padding:4px;margin-bottom:8px;"
                 />
             </div>
-            <p id="package-name" style="font-weight:bold; padding: 0 16px;">select a node to see its function list</p>
+            <p id="package-name" style="font-weight:bold; padding: 0 16px;">Select a node to see its function list</p>
             <ul id="function-list" style="list-style-type:none;padding: 0 16px;"></ul>
         </div>
 
@@ -189,7 +189,7 @@ def add_info_panel(filename):
             display:none;
         ">
             <div id="dep-header" style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding-bottom:12px; padding: 14px 16px;">
-                <h2 style="margin-top:12px;">Function Dependencies</h2>
+                <h2>Function Dependencies</h2>
                 <button id="close-dep" style="background:#ddd;border:none;padding:4px 8px;cursor:pointer;border-radius:4px;">close</button>
             </div>
             <div id="dep-content" style="color:#333; padding: 0 16px;"></div>
