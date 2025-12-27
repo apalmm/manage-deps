@@ -1,0 +1,48 @@
+=== Minimal runtime dependency validation for stringr::str_count ===
+
+R version:
+[1] "R version 4.5.1 (2025-06-13)"
+
+Isolated lib:
+/var/folders/z7/0bysc5hx1211ddn6gf14xzvc0000gn/T//RtmpPW05MT/rdeps_lib_71ea11609f00 
+
+.libPaths() (forced):
+[1] "/private/var/folders/z7/0bysc5hx1211ddn6gf14xzvc0000gn/T/RtmpPW05MT/rdeps_lib_71ea11609f00"
+[2] "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library"                      
+
+Installing predicted packages (dependencies=FALSE):
+[1] "stringr" "stringi" "vctrs"   "rlang"  
+trying URL 'https://cloud.r-project.org/bin/macosx/big-sur-arm64/contrib/4.5/stringr_1.6.0.tgz'
+trying URL 'https://cloud.r-project.org/bin/macosx/big-sur-arm64/contrib/4.5/stringi_1.8.7.tgz'
+trying URL 'https://cloud.r-project.org/bin/macosx/big-sur-arm64/contrib/4.5/vctrs_0.6.5.tgz'
+trying URL 'https://cloud.r-project.org/bin/macosx/big-sur-arm64/contrib/4.5/rlang_1.1.6.tgz'
+
+The downloaded binary packages are in
+	/var/folders/z7/0bysc5hx1211ddn6gf14xzvc0000gn/T//RtmpPW05MT/downloaded_packages
+
+Installed in isolated lib:
+[1] "rlang"   "stringi" "stringr" "vctrs"  
+
+OK: isolated lib contains exactly the predicted packages.
+
+Loaded namespaces BEFORE loading stringr:
+[1] "base"      "compiler"  "datasets"  "graphics"  "grDevices" "methods"  
+[7] "stats"     "tools"     "utils"    
+
+Loading stringr from isolated lib...
+Running tests...
+PASS: functional checks
+
+Loaded namespaces AFTER loading stringr + running str_count:
+ [1] "base"      "cli"       "compiler"  "datasets"  "glue"      "graphics" 
+ [7] "grDevices" "lifecycle" "magrittr"  "methods"   "rlang"     "stats"    
+[13] "stringi"   "stringr"   "tools"     "utils"     "vctrs"    
+
+New namespaces loaded during this run:
+[1] "cli"       "glue"      "lifecycle" "magrittr"  "rlang"     "stringi"  
+[7] "stringr"   "vctrs"    
+
+Unexpected namespaces:
+[1] "cli"       "glue"      "lifecycle" "magrittr" 
+Error: FAIL: unexpected namespaces were loaded (not in system or predicted set).
+Execution halted
