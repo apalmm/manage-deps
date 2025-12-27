@@ -1,12 +1,140 @@
-let packageData = {}; //global so other handlers can use it
+let packageData = {}; // global so other handlers can use it
+let pkgDescCache = {}; // cache package -> description so node clicks don't spam backend
+
+function ensureLeftSidebar() {
+  let sidebar = document.getElementById("left-sidebar");
+  if (sidebar) return sidebar;
+
+  sidebar = document.createElement("div");
+  sidebar.id = "left-sidebar";
+  sidebar.style.position = "absolute";
+  sidebar.style.top = "10%";
+  sidebar.style.left = "15px";
+  sidebar.style.width = "20%";
+  sidebar.style.maxHeight = "80%";
+  sidebar.style.display = "flex";
+  sidebar.style.flexDirection = "column";
+  sidebar.style.gap = "12px";
+  sidebar.style.zIndex = 9999;
+
+  document.body.appendChild(sidebar);
+  return sidebar;
+}
+
+function ensurePackagePanel() {
+  let panel = document.getElementById("pkg-panel");
+  if (panel) return panel;
+
+  const sidebar = ensureLeftSidebar();
+
+  panel = document.createElement("div");
+  panel.id = "pkg-panel";
+  panel.style.background = "rgb(249, 249, 249)";
+  panel.style.border = "1px solid rgb(204, 204, 204)";
+  panel.style.overflowY = "auto";
+  panel.style.fontFamily = "Arial, sans-serif";
+  panel.style.boxShadow = "rgba(0, 0, 0, 0.2) 0px 2px 4px";
+  panel.style.borderRadius = "8px";
+  panel.style.display = "none"; // shown on node select
+  panel.style.maxHeight = "32%";
+
+  panel.innerHTML = `
+    <div style="position:sticky;top:0;background:#f9f9f9;z-index:2;padding: 14px 16px;border-bottom:1px solid #ddd;">
+      <h2 style="margin:0;">Package Info</h2>
+      <div id="pkg-panel-name" style="margin-top:6px;font-weight:bold;font-size:14px;"></div>
+    </div>
+    <div id="pkg-panel-desc" style="color:#333; padding: 12px 16px; font-size: 12px; line-height: 1.35;">
+      <i>Select a package to see its description.</i>
+    </div>
+  `;
+
+  sidebar.appendChild(panel);
+  return panel;
+}
+
+function mountDepPanelIntoSidebar() {
+  const sidebar = ensureLeftSidebar();
+  const depPanel = document.getElementById("dep-panel");
+  if (!depPanel) return null;
+
+  // remove absolute positioning so it stacks under pkg-panel
+  depPanel.style.position = "relative";
+  depPanel.style.top = "";
+  depPanel.style.left = "";
+  depPanel.style.right = "";
+  depPanel.style.marginLeft = "0";
+  depPanel.style.width = "100%";
+  depPanel.style.height = "auto";
+  depPanel.style.maxHeight = "48%"; // keeps it from taking over the whole column
+
+  // make sure it is inside the sidebar
+  if (depPanel.parentElement !== sidebar) {
+    sidebar.appendChild(depPanel);
+  }
+
+  // optional: hide the top close button (since we add a bottom-right one)
+  const closeTop = document.getElementById("close-dep");
+  if (closeTop) closeTop.style.display = "none";
+
+  // add a sticky footer close button bottom-right (only once)
+  if (!document.getElementById("dep-footer")) {
+    const footer = document.createElement("div");
+    footer.id = "dep-footer";
+    footer.style.position = "sticky";
+    footer.style.bottom = "0";
+    footer.style.background = "#f9f9f9";
+    footer.style.padding = "10px 16px";
+    footer.style.borderTop = "1px solid #ddd";
+    footer.style.display = "flex";
+    footer.style.justifyContent = "flex-end";
+
+    const btn = document.createElement("button");
+    btn.id = "close-dep-bottom";
+    btn.textContent = "close";
+    btn.style.background = "#ddd";
+    btn.style.border = "none";
+    btn.style.padding = "6px 10px";
+    btn.style.cursor = "pointer";
+    btn.style.borderRadius = "6px";
+
+    btn.addEventListener("click", () => {
+      depPanel.style.display = "none";
+    });
+
+    footer.appendChild(btn);
+    depPanel.appendChild(footer);
+  }
+
+  return depPanel;
+}
+
+async function fetchPackageDescription(pkg) {
+  const key = (pkg || "").trim();
+  if (!key) return "";
+
+  if (pkgDescCache[key]) return pkgDescCache[key];
+
+  const resp = await fetch("/describe_package", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ package: key }),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+  const data = await resp.json();
+  const desc = data.description || "";
+
+  // cache whatever we got (including empty), so repeated clicks are fast
+  pkgDescCache[key] = desc;
+  return desc;
+}
 
 function renderList(filteredFuncs, listEl, pkg) {
   const depPanel = document.getElementById("dep-panel");
   const depContent = document.getElementById("dep-content");
-  const closeDep = document.getElementById("close-dep");
 
   listEl.innerHTML = "";
-  depPanel.style.display = "none"; //hide when rerendering
+  depPanel.style.display = "none"; // hide when rerendering
 
   filteredFuncs.forEach((fn) => {
     const li = document.createElement("li");
@@ -15,7 +143,6 @@ function renderList(filteredFuncs, listEl, pkg) {
     li.style.padding = "2px 0";
     li.style.cursor = "pointer";
 
-    // inside renderList(fn, listEl, pkg)
     li.addEventListener("click", async () => {
       listEl.querySelectorAll("li").forEach((el) => {
         el.style.backgroundColor = "";
@@ -26,17 +153,17 @@ function renderList(filteredFuncs, listEl, pkg) {
 
       depPanel.style.display = "block";
       depContent.innerHTML = `
-    <div id="dep-scroll" style="
-      max-height: 180px;
-      overflow-y: auto;
-      padding-right: 6px;
-      margin-bottom: 8px;
-      border-bottom: 1px solid #ccc;
-    ">Loading dependencies...</div>
-    <div id="func-desc" style="font-size: 12px; color: #444; padding-top: 6px;">
-      Fetching package description...
-    </div>
-  `;
+        <div id="dep-scroll" style="
+          max-height: 180px;
+          overflow-y: auto;
+          padding-right: 6px;
+          margin-bottom: 8px;
+          border-bottom: 1px solid #ccc;
+        ">Loading dependencies...</div>
+        <div id="func-desc" style="font-size: 12px; color: #444; padding-top: 6px;">
+          Fetching function description...
+        </div>
+      `;
 
       try {
         // fetch dependencies
@@ -51,26 +178,27 @@ function renderList(filteredFuncs, listEl, pkg) {
         const scrollEl = depContent.querySelector("#dep-scroll");
         if (depData.required_packages && depData.required_packages.length > 0) {
           scrollEl.innerHTML = `
-        <strong>${pkg} → <span style="color: red">${fn}</span></strong> depends on:<br>
-        <ul style="margin-top:4px; padding-left:18px;">
-          ${depData.required_packages.map((pkg) => `<li>${pkg}</li>`).join("")}
-        </ul>
-      `;
+            <strong>${pkg} → <span style="color: red">${fn}</span></strong> depends on:<br>
+            <ul style="margin-top:4px; padding-left:18px;">
+              ${depData.required_packages.map((p) => `<li>${p}</li>`).join("")}
+            </ul>
+          `;
         } else {
           scrollEl.textContent = `${fn} has no detected dependencies.`;
         }
 
-        // fetch function description
-        const descResp = await fetch("/describe", {
+        // fetch function description (new endpoint)
+        const descResp = await fetch("/describe_function", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ function: fn, package: pkg }),
         });
+        if (!descResp.ok) throw new Error(`HTTP ${descResp.status}`);
 
         const descData = await descResp.json();
         const descEl = depContent.querySelector("#func-desc");
         descEl.innerHTML = descData.description
-          ? `<strong>Description of ${pkg} package:</strong> ${descData.description}`
+          ? `<strong>${pkg}::${fn}</strong><div style="margin-top:4px;">${descData.description}</div>`
           : "<i>No description available.</i>";
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -80,13 +208,6 @@ function renderList(filteredFuncs, listEl, pkg) {
 
     listEl.appendChild(li);
   });
-
-  if (closeDep && !closeDep.dataset.bound) {
-    closeDep.dataset.bound = "true";
-    closeDep.addEventListener("click", () => {
-      depPanel.style.display = "none";
-    });
-  }
 }
 
 async function loadPackageFunctions() {
@@ -117,6 +238,9 @@ async function loadPackageFunctions() {
 }
 
 async function init(network) {
+  mountDepPanelIntoSidebar(); // prevents overlap with package panel
+  ensurePackagePanel(); // create package panel once
+
   packageData = await loadPackageFunctions();
 
   // recursive dependency chain traversal
@@ -212,6 +336,26 @@ async function init(network) {
       const filtered = funcs.filter((f) => f.toLowerCase().includes(q));
       renderList(filtered, listEl, pkg);
     };
+
+    // show + populate package panel (separate)
+    const pkgPanel = document.getElementById("pkg-panel");
+    const pkgNameEl = document.getElementById("pkg-panel-name");
+    const pkgDescEl = document.getElementById("pkg-panel-desc");
+
+    pkgPanel.style.display = "block";
+    pkgNameEl.textContent = pkg;
+    pkgDescEl.innerHTML = "<i>Loading package description...</i>";
+
+    fetchPackageDescription(pkg)
+      .then((desc) => {
+        pkgDescEl.innerHTML = desc
+          ? `<strong>Description</strong><div style="margin-top:4px;">${desc}</div>`
+          : "<i>No description available.</i>";
+      })
+      .catch((err) => {
+        console.error("Failed to load package description:", err);
+        pkgDescEl.innerHTML = "<i>Failed to load package description.</i>";
+      });
   });
 
   network.on("deselectNode", () => {
@@ -233,10 +377,14 @@ async function init(network) {
 
     network.body.data.edges.update(resetEdges);
     network.body.data.nodes.update(resetNodes);
+
+    // hide package panel on deselect
+    const pkgPanel = document.getElementById("pkg-panel");
+    if (pkgPanel) pkgPanel.style.display = "none";
   });
 }
 
-//startup
+// startup
 window.addEventListener("load", () => {
   const network = window.network || window.networkBody?.network;
   if (!network) {
@@ -295,7 +443,7 @@ window.addEventListener("load", () => {
     network.body.data.edges.update(edges);
   });
 
-  //improved discrete legend panel
+  // improved discrete legend panel
   const legend = document.createElement("div");
   legend.id = "graph-legend";
   legend.style.position = "absolute";
