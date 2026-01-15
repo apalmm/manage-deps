@@ -411,7 +411,7 @@ async function loadPackageFunctions() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     const data = await resp.json();
-
+    //filter out non callable functions
     Object.keys(data).forEach((pkg) => {
       data[pkg] = data[pkg].filter(
         (func) =>
@@ -465,7 +465,7 @@ async function init(network) {
     const listEl = document.getElementById("function-list");
     const searchEl = document.getElementById("function-search");
 
-    nameEl.textContent = pkg;
+    nameEl.innerHTML = `List of all functions included in the <span style='color:red;'>${pkg}</span> package:`;
     const funcs = packageData[pkg] || [];
 
     if (funcs.length === 0) {
@@ -584,6 +584,88 @@ window.addEventListener("load", () => {
     if (currentFunctionDepPkgs.size > 0) applyFunctionHighlight(network);
     else if (currentSelectedNodeId) applyNodeChainHighlight(network);
   });
+
+  // improved discrete legend panel
+  const legend = document.createElement("div");
+  legend.id = "graph-legend";
+  legend.style.position = "absolute";
+  legend.style.bottom = "6%";
+  legend.style.right = "15px";
+  legend.style.backgroundColor = "rgba(255,255,255,0.97)";
+  legend.style.padding = "14px 16px";
+  legend.style.border = "1px solid #ccc";
+  legend.style.borderRadius = "10px";
+  legend.style.boxShadow = "0 2px 6px rgba(0,0,0,0.25)";
+  legend.style.fontFamily = "Arial, sans-serif";
+  legend.style.fontSize = "13px";
+  legend.style.zIndex = 9999;
+
+  legend.innerHTML = `
+  <strong style="font-size:14px;">Legend</strong>
+
+  <div style="margin-top:10px;margin-bottom:6px;">
+    <span style="display:inline-block;width:24px;height:3px;background:#ff5b02;margin-right:6px;"></span>
+    <strong>LinkingTo</strong> → compiled dependency (C/C++ interface between packages)
+  </div>
+
+  <div style="margin-bottom:6px;">
+    <span style="display:inline-block;width:24px;height:3px;background:#999;margin-right:6px;"></span>
+    <strong>Imports</strong> → standard dependency used by package functions
+  </div>
+
+  <div style="margin-bottom:6px;">
+    <span style="display:inline-block;width:24px;height:3px;background:red;margin-right:6px;"></span>
+    <strong>Package-level path</strong> → dependency chain from selected package
+  </div>
+
+  <!-- NEW: function-level dependencies -->
+  <div style="margin-bottom:10px;">
+    <span style="display:inline-block;width:24px;height:3px;background:#1f77ff;margin-right:6px;"></span>
+    <strong>Function-level path</strong> → packages required by selected function
+  </div>
+
+  <hr style="margin:8px 0;">
+
+  <div style="margin-bottom:12px;font-weight:bold;">
+    Node color by dependency layer depth
+  </div>
+
+  <div style="display:flex;justify-content:space-around;align-items:end;gap:6px;text-align:center; margin-bottom:12px;">
+    <div>
+      <div style="width:18px;height:18px;background:#5fc8f4;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;"><b>Root package</b></div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#a1ce40;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (1)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#fde74c;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (2)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#ff8330;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (3)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#e55934;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (4)</div>
+    </div>
+    <div>
+      <div style="width:18px;height:18px;background:#7b5e7b;border:1px solid #666;border-radius:50%;margin:auto;"></div>
+      <div style="font-size:11px;margin-top:2px;">Layer (5+)</div>
+    </div>
+  </div>
+
+  <div style="font-size:12px;text-align:center;margin-top:6px;color:#444;">
+    Root Package → Deeper dependency layers
+  </div>
+
+  <hr style="margin:10px 0;">
+  <div><strong>Node size</strong> → larger = higher dependency importance</div>
+`;
+
+  document.body.appendChild(legend);
 
   network.on("doubleClick", (params) => {
     if (params.nodes.length === 0) return;

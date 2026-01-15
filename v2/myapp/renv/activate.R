@@ -483,7 +483,7 @@ local({
     }
   
     # if we got here, we failed to find renv
-    fmt <- "renv %s is not available from your declared package repositories"
+    fmt <- "renv %s is not available from these declared package repositories"
     stop(sprintf(fmt, version))
   
   }

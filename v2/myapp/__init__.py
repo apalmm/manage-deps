@@ -57,7 +57,7 @@ def create_app():
         if not pkg or not func:
             return jsonify({"error": "Missing 'package' or 'function'"}), 400
 
-        desc = scrape_function_description(pkg, func)  # your existing function
+        desc = scrape_function_description(pkg, func)  # existing function
         if not desc:
             return jsonify({"description": ""})
         return jsonify({"description": desc})

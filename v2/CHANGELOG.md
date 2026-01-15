@@ -121,3 +121,28 @@ _(Dependency Visualization and Analysis Toolkit)_
 - Working on fetching package descriptions and displaying
 
 ---
+
+### **v1.1.3 — Package description, and function description in separate panels**
+
+- Various styling fixes
+- Now when selecting a node, you recieve that packages description (fetched from multiple sources in case fail)
+- When a selecting a function, that function description is fetched (from multiple sources in case one fails)
+
+---
+
+### **v1.1.4 — Caching for static analysis**
+
+- Caching to help improve load time when doing static analysis of functions
+- Might need improvement (future works [??])
+- package_functions.json, package_descriptions.json, function_descriptions.json
+
+---
+
+### **v1.1.4 — Styling updates and perfecting**
+
+- Various styling fixes
+- Actual function dependency path highlighted in blue
+- Fade out all unneccesary nodes
+- Updated legend to include new path
+
+---
