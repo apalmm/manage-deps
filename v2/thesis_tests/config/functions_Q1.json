@@ -1,0 +1,17 @@
+[
+  {
+    "package": "stringr",
+    "function": "str_count",
+    "category": "string_wrapper"
+  },
+  {
+    "package": "stringr",
+    "function": "str_detect",
+    "category": "string_wrapper"
+  },
+  {
+    "package": "tidyr",
+    "function": "replace_na",
+    "category": "data_cleaning"
+  }
+]

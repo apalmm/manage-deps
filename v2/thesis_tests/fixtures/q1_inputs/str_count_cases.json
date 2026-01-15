@@ -1,0 +1,17 @@
+[
+  {
+    "id": "basic_literal",
+    "input": { "string": ["banana"], "pattern": "a" },
+    "expected": 3
+  },
+  {
+    "id": "regex_digit",
+    "input": { "string": "abc123xyz", "pattern": "[0-9]" },
+    "expected": 3
+  },
+  {
+    "id": "no_match",
+    "input": { "string": "hello", "pattern": "z" },
+    "expected": 0
+  }
+]

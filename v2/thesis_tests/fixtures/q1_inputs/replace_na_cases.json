@@ -1,0 +1,36 @@
+[
+  {
+    "id": "df_single_column",
+    "input": {
+      "data": {
+        "columns": {
+          "x": [1, null, 3]
+        }
+      },
+      "replace": { "x": 0 }
+    },
+    "expected": {
+      "columns": {
+        "x": [1, 0, 3]
+      }
+    }
+  },
+  {
+    "id": "df_replace_both",
+    "input": {
+      "data": {
+        "columns": {
+          "x": [null, 2, null],
+          "y": [null, "b", "c"]
+        }
+      },
+      "replace": { "x": -1, "y": "missing" }
+    },
+    "expected": {
+      "columns": {
+        "x": [-1, 2, -1],
+        "y": ["missing", "b", "c"]
+      }
+    }
+  }
+]
