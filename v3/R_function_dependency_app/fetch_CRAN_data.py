@@ -1,4 +1,6 @@
-import os, json, requests
+import os
+import json
+import requests
 
 
 def fetch_cran_metadata(pkg, outdir="data/raw"):
@@ -11,7 +13,7 @@ def fetch_cran_metadata(pkg, outdir="data/raw"):
 
     url = f"https://crandb.r-pkg.org/{pkg}"
     r = requests.get(url)
-    
+
     data = r.json()
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
