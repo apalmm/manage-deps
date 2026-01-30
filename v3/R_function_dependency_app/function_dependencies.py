@@ -25,7 +25,7 @@
 #        - internal/local calls inside the same package
 #        - cross-package calls (pkg::fun) and imported-symbol calls (depth-limited)
 #
-# Limits I’m not pretending away:
+# Limits:
 #   - This won’t be “perfect runtime invokes” because R is dynamic (S3 dispatch, NSE,
 #     get/do.call/eval/parse, etc.). I can optionally flag “dynamic-ish” patterns later.
 #   - Regex parsing of R is inherently brittle. Brace matching helps, but an AST pass

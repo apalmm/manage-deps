@@ -8,3 +8,16 @@ beautifulsoup4
 flask 
 flask-cors 
 rpy2
+os
+json
+time
+hashlib
+pathlib
+datetime
+webbrowser
+parse
+argparse
+pyvis.network
+urllib.request
+re
+bs4
