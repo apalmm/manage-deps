@@ -1,27 +1,26 @@
 import networkx as nx
 from .fetch_CRAN_data import fetch_cran_metadata
 
+SKIP = {  # skip these packages because they are base R packages that come
+    # pre-installed / CRAN doesn't support metadata for them
+    "R",
+    "compiler",
+    "grid",
+    "parallel",
+    "splines",
+    "stats4",
+    "tcltk",
+    "methods",
+    "utils",
+    "stats",
+    "graphics",
+    "grDevices",
+    "datasets",
+    "tools",
+}
 
 def get_dependencies(pkg):
-    skip = {  # skip these packages because they are base R packages that come pre-installed / CRAN doesn't support metadata for them
-        "R",
-        "compiler",
-        "grid",
-        "parallel",
-        "splines",
-        "stats4",
-        "tcltk",
-        "methods",
-        "utils",
-        "stats",
-        "graphics",
-        "grDevices",
-        "datasets",
-        "tools",
-    }
-
-    if pkg in skip:
-        # print(pkg)
+    if pkg in SKIP:
         return {}  # ignore base packages
 
     data = fetch_cran_metadata(pkg)

@@ -1,0 +1,12 @@
+.Rhistory
+.RData
+__pycache__/
+*.pyc
+.DS_Store
+.env
+data/raw
+data/graphs
+cache/descriptions
+cache/github_repos
+data/*
+lib

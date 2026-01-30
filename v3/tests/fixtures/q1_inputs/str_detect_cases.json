@@ -1,0 +1,17 @@
+[
+  {
+    "id": "basic_true",
+    "input": { "string": "banana", "pattern": "na" },
+    "expected": true
+  },
+  {
+    "id": "basic_false",
+    "input": { "string": "banana", "pattern": "xyz" },
+    "expected": false
+  },
+  {
+    "id": "regex_digit",
+    "input": { "string": "abc123", "pattern": "[0-9]+" },
+    "expected": true
+  }
+]

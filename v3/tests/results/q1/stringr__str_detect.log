@@ -1,0 +1,22 @@
+1: Minimal runtime dependency validation
+
+Package: stringr 
+Function: str_detect 
+Fixture: thesis_tests/fixtures/q1_inputs/str_detect_cases.json 
+
+Hypothesized packages (dependencies=FALSE):
+[1] "cli"       "lifecycle" "rlang"     "stringi"   "stringr"   "usethis"  
+[7] "vctrs"    
+
+Installed in isolated lib:
+[1] "cli"       "lifecycle" "rlang"     "stringi"   "stringr"   "usethis"  
+[7] "vctrs"    
+PASS: basic_true 
+PASS: basic_false 
+PASS: regex_digit 
+
+New namespaces loaded:
+[1] "magrittr"  "cli"       "glue"      "vctrs"     "stringi"   "stringr"  
+[7] "lifecycle" "rlang"    
+
+PASS: function runs correctly with hypothesized dependencies
